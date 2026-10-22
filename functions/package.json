@@ -1,0 +1,22 @@
+{
+  "name": "managertalk-functions",
+  "description": "ManagerTalk hackathon backend: the /api/s02/turn proxy (mock mode only).",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "sync-shared": "node scripts/sync-shared.mjs",
+    "build": "npm run sync-shared && tsc -p tsconfig.json",
+    "typecheck": "npm run sync-shared && tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test lib/**/*.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,478 @@
+{
+  "scenario_id": "MT-S02",
+  "title": "The Defensive Engineer",
+  "difficulty": "Intermediate",
+  "primary_competency": "Managing defensiveness after corrective feedback",
+
+  "summary": {
+    "core_scenario": "A senior backend engineer, Tomás Vieira, responded defensively to corrective feedback delivered hurriedly and without follow-up. A subsequent sprint review exchange narrowed team participation, and a later outage touched the same area but does not prove causality. The manager must address observable behavioural impact without prosecuting technical decisions, without asserting causality, and without requiring agreement on root cause.",
+    "stakes": {
+      "employee": "Behavioural feedback may be interpreted as a challenge to technical competence.",
+      "manager": "Must avoid prosecuting or retreating; must correct her own earlier process failure.",
+      "team": "Reduced psychological safety and reduced participation in technical discussions.",
+      "organisation": "Escalation path appears available but is not functioning."
+    },
+    "ambiguity": [
+      "Whether Tomás’s defensiveness is a stable pattern or a reasonable response to rushed feedback.",
+      "Whether his response caused the sprint-review silence.",
+      "Whether juniors are avoiding him specifically or due to rota/workstream changes.",
+      "Whether the outage is connected to the sprint review.",
+      "Whether Nadia’s observation is representative.",
+      "Whether Aoife’s preference for written questions reflects discomfort or working style.",
+      "Whether the manager’s earlier handling contributed materially."
+    ]
+  },
+
+  "evidence_pack": [
+    {
+      "id": "E1",
+      "source": "Sprint Review Notes",
+      "observed": "Aoife raised a concern; Tomás responded; no action or owner assigned; participation narrowed.",
+      "not_proven": "That Tomás caused the silence; two attendees left early; later items were routine."
+    },
+    {
+      "id": "E2",
+      "source": "Pull Request Routing Data",
+      "observed": "Junior routing to Tomás declined; his review volume and speed remain high.",
+      "not_proven": "Intent or cause; rota and workstream changes are confounders."
+    },
+    {
+      "id": "E3",
+      "source": "Staff Engineer Message",
+      "observed": "A senior observer noted juniors going quiet around Tomás.",
+      "not_proven": "Representativeness or impartiality; prior history exists; source cannot be named."
+    },
+    {
+      "id": "E4",
+      "source": "Draft Postmortem",
+      "observed": "Outage involved invalidation path; multiple contributing factors; Tomás authored candid document.",
+      "not_proven": "Any link to sprint review; draft findings not final."
+    },
+    {
+      "id": "E5",
+      "source": "Tomás’s Email",
+      "observed": "Accepted general concern; rebutted each specific example; at least one rebuttal appears correct.",
+      "not_proven": "That other examples were incorrect; scrutiny is reasonable when one example is mistaken."
+    },
+    {
+      "id": "E6",
+      "source": "Peer Feedback",
+      "observed": "Strong technical praise; two comments describe interactions as effortful.",
+      "not_proven": "Causality; sample is small, self-selected, anonymised, and predates events."
+    },
+    {
+      "id": "E7",
+      "source": "Aoife’s 1:1 Note",
+      "observed": "She asked about raising concerns in writing.",
+      "not_proven": "That this preference is caused by Tomás; she did not attribute it."
+    }
+  ],
+
+  "conversation_flow": {
+    "stage_1_sbi_statement": {
+      "requirements": [
+        "One specific observable behaviour from the sprint review.",
+        "Impact stated as narrowed participation and lack of follow-up.",
+        "Separate direct observation from reported information.",
+        "No outage reference.",
+        "No stacking multiple incidents.",
+        "No attribution of motive or causality."
+      ],
+      "prohibited": [
+        "Opening with outage.",
+        "Using Nadia’s report as opening evidence.",
+        "Stating Tomás caused silence.",
+        "Softening into a question.",
+        "Overloading with multiple examples."
+      ],
+      "ambiguity_to_preserve": [
+        "Cause of silence remains unknown.",
+        "Effect can be stated without asserting intent."
+      ]
+    },
+
+    "stage_2_exploration": {
+      "requirements": [
+        "Elicit Tomás’s account before rebuttal.",
+        "Explore what he thought Aoife was asking.",
+        "Explore what he noticed about participation.",
+        "Explore how he interpreted earlier feedback.",
+        "Surface manager’s own contribution (rushed, unclosed feedback)."
+      ],
+      "prohibited": [
+        "Trading evidence.",
+        "Correcting his account in real time.",
+        "Turning discussion into architecture review.",
+        "Accepting procedural promises as exploration outcome."
+      ],
+      "ambiguity_to_preserve": [
+        "Whether he noticed silence.",
+        "Whether detail was driven by expertise, uncertainty, habit, or authority."
+      ]
+    },
+
+    "stage_3_root_cause_hypotheses": {
+      "requirements": [
+        "Hold multiple explanations open.",
+        "Include hypotheses not locating cause solely in Tomás.",
+        "Include manager’s own contribution.",
+        "Treat hypotheses as working possibilities, not findings."
+      ],
+      "prohibited": [
+        "Diagnosing personality.",
+        "Using outage to force causality.",
+        "Requiring agreement on root cause.",
+        "Treating one hypothesis as settled."
+      ],
+      "ambiguity_to_preserve": [
+        "No root cause established.",
+        "Hypotheses remain open."
+      ]
+    },
+
+    "stage_4_commitment_builder": {
+      "requirements": [
+        "Observable actions only.",
+        "One owner per commitment.",
+        "Date or defined interval.",
+        "Third-party verifiable.",
+        "Feasible before checkpoint.",
+        "At least one manager-owned commitment addressing her earlier process failure.",
+        "At least one employee commitment addressing behaviour in defined context."
+      ],
+      "prohibited": [
+        "Attitudinal commitments.",
+        "Commitments requiring Aoife’s undisclosed cooperation.",
+        "Commitments requiring concession of technical position.",
+        "Commitments contingent on postmortem conclusions.",
+        "Assigning all commitments to Tomás."
+      ],
+      "ambiguity_to_preserve": [
+        "Commitments are experiments, not proof of cause."
+      ]
+    },
+
+    "stage_5_closing": {
+      "requirements": [
+        "Name follow-up date.",
+        "Name initiator.",
+        "State concern remains open.",
+        "Restate commitments precisely.",
+        "Clarify what is not being said (role, rating, promotion, technical judgement).",
+        "Establish continuity if context changes."
+      ],
+      "prohibited": [
+        "Reassurance beyond authority.",
+        "Implying resolution.",
+        "Introducing outage as leverage.",
+        "Seeking final acknowledgement.",
+        "Ending without dated checkpoint."
+      ],
+      "ambiguity_to_preserve": [
+        "Matter remains open.",
+        "Next conversation is required."
+      ]
+    }
+  },
+
+  "commitment_expectations": {
+    "acceptable": [
+      "Action-based commitments.",
+      "Observable in group settings.",
+      "Defined pause, written-first approach, or taking one question offline.",
+      "Manager commitment addressing her own process failure."
+    ],
+    "unacceptable": [
+      "Be more mindful.",
+      "Work on tone.",
+      "Be more approachable.",
+      "Any commitment evaluable only by Tomás.",
+      "Any commitment requiring Aoife’s participation.",
+      "Any commitment requiring concession of technical correctness."
+    ],
+    "structural": [
+      "Both parties must commit.",
+      "Commitments must be testable before checkpoint."
+    ]
+  },
+
+  "scoring_rubric": {
+    "excellent": {
+      "criteria": [
+        "One specific observable behaviour named.",
+        "Impact stated without causality.",
+        "Exploration elicited before rebuttal.",
+        "Manager contribution named as hypothesis.",
+        "Multiple explanations held open.",
+        "Bilateral commitments with dates and owners.",
+        "Clear closing with dated checkpoint."
+      ]
+    },
+    "adequate": {
+      "criteria": [
+        "Recognisable behavioural statement.",
+        "Some exploration.",
+        "At least one concrete commitment.",
+        "Some next step named."
+      ]
+    },
+    "poor": {
+      "criteria": [
+        "Outage used as evidence.",
+        "Silence stated as caused by Tomás.",
+        "Evidence traded.",
+        "Attitudinal commitments accepted.",
+        "Reassurance used instead of structure.",
+        "No dated checkpoint."
+      ]
+    }
+  },
+
+  "feedback_logic": {
+    "good": {
+      "focus": [
+        "Identify specific effective moves.",
+        "State what those moves preserved.",
+        "Clarify that discomfort is not failure.",
+        "Flag remaining unknowns.",
+        "Name next decision point."
+      ]
+    },
+    "poor": {
+      "focus": [
+        "Identify specific moves and effects.",
+        "State structural problems (e.g., outage misuse).",
+        "Offer one alternative behaviour per failure.",
+        "Avoid attributing failures to disposition."
+      ]
+    },
+    "avoidance": {
+      "focus": [
+        "Name compressed stages.",
+        "State cost of avoidance.",
+        "Identify single stage where directness mattered.",
+        "Describe specific move available."
+      ]
+    },
+    "escalation": {
+      "focus": [
+        "Distinguish escalation forms.",
+        "State evidence limits.",
+        "Identify skipped intermediate steps.",
+        "Describe consequences behaviourally."
+      ]
+    }
+  },
+
+  "ui_screens": {
+    "sbi": {
+      "title": "Sprint Review: One Behaviour, One Effect",
+      "purpose": "Name one observable behaviour from the sprint review and its immediate effect, without asserting motive or causality.",
+      "manager_guidance": [
+        "Focus on the moment when Aoife raised a concern and Tomás responded.",
+        "Name one specific observable behaviour.",
+        "State the immediate effect (participation narrowed, no owner assigned).",
+        "Separate observation from later reports.",
+        "Avoid mentioning the outage or asserting causality."
+      ],
+      "input_prompt": "Write a short SBI statement describing the sprint review moment you observed and its immediate effect, without claiming Tomás caused the silence."
+    },
+    "exploration": {
+      "title": "Exploration: Tomás’s Account First",
+      "purpose": "Elicit Tomás’s understanding before rebuttal.",
+      "manager_guidance": [
+        "What Tomás understood Aoife to be asking.",
+        "What he intended with his response.",
+        "What he noticed about participation.",
+        "How earlier rushed feedback landed.",
+        "What made examples hard to accept."
+      ],
+      "input_prompt": "Write 3–5 exploration questions seeking Tomás’s account without accusing or asserting causality."
+    },
+    "hypotheses": {
+      "title": "Hypotheses: Multiple Explanations, None Final",
+      "purpose": "Hold several working explanations open.",
+      "manager_guidance": [
+        "Rushed earlier feedback.",
+        "Tomás’s detail-oriented response style.",
+        "Team deference to domain experts.",
+        "Sprint review format.",
+        "Rota/workstream confounders.",
+        "Juniors’ working preferences.",
+        "Manager’s own contribution."
+      ],
+      "input_prompt": "List 3–5 hypotheses you will keep open. Include your own contribution. None should be final findings."
+    },
+    "commitments": {
+      "title": "Commitments: Observable Experiments, Shared Ownership",
+      "purpose": "Build small, observable, time-bound commitments.",
+      "manager_guidance": [
+        "Action-based",
+        "Owned",
+        "Dated",
+        "Observable",
+        "Feasible before checkpoint",
+        "One employee commitment in a defined meeting context.",
+        "One manager commitment addressing earlier process failure."
+      ],
+      "input_prompt": "Define one employee commitment and one manager commitment. Each must be observable, owned, dated, and feasible before the checkpoint."
+    },
+    "closing": {
+      "title": "Closing: Date, Owner, Open Status",
+      "purpose": "Close with structure, not resolution.",
+      "manager_guidance": [
+        "Name follow-up date.",
+        "Name initiator.",
+        "Restate commitments.",
+        "State concern remains open.",
+        "Clarify what is not being decided (role, rating, promotion, technical judgement)."
+      ],
+      "input_prompt": "Write a closing statement naming the follow-up date, initiator, commitments, and open status."
+    },
+    "scoring": {
+      "title": "Scenario Score: Behaviour, Not Comfort",
+      "purpose": "Show alignment with behavioural expectations.",
+      "display_text": {
+        "excellent": [
+          "One behaviour + effect named",
+          "Exploration before rebuttal",
+          "Manager contribution named",
+          "Multiple hypotheses held open",
+          "Bilateral commitments",
+          "Dated checkpoint"
+        ],
+        "adequate": [
+          "Recognisable behavioural statement",
+          "Some exploration",
+          "One concrete commitment",
+          "Some next step"
+        ],
+        "poor": [
+          "Outage used as evidence",
+          "Causality asserted",
+          "Evidence traded",
+          "Attitudinal commitments",
+          "Reassurance instead of structure",
+          "No checkpoint"
+        ]
+      }
+    },
+    "feedback": {
+      "title": "Feedback: Specific Moves, Next Experiments",
+      "purpose": "Provide behavioural feedback preserving ambiguity.",
+      "display_template": [
+        "What you did well",
+        "What cost was created",
+        "What remains unknown",
+        "Next experiment"
+      ],
+      "constraints": [
+        "Observable behaviour only",
+        "No motives or personality",
+        "No requirement for agreement",
+        "Commitments are experiments"
+      ]
+    }
+  },
+
+  "implementation_notes": {
+    "behaviour_model_employee": [
+      "Technically strong; responds to underspecified questions with detail and framing correction.",
+      "Accepts general behavioural concerns but scrutinises specific examples.",
+      "Procedurally impeccable; may remain unconvinced.",
+      "May interpret behavioural feedback as challenge to competence.",
+      "May remain composed, precise, and unconvinced while still making commitments.",
+      "May shift disagreement into written channels.",
+      "Must not be required to concede technical correctness or causality.",
+      "Must be allowed to disagree without disagreement ending the conversation."
+    ],
+    "behaviour_model_manager": [
+      "Must name one observable behaviour and its effect.",
+      "Must separate observation from report.",
+      "Must avoid prosecuting or retreating.",
+      "Must elicit Tomás’s account before rebuttal.",
+      "Must acknowledge her earlier rushed, unclosed feedback.",
+      "Must hold multiple hypotheses open.",
+      "Must avoid diagnosing personality or asserting causality.",
+      "Must build bilateral commitments.",
+      "Must close with dated checkpoint and explicit open status."
+    ],
+    "branching_constraints": [
+      "Technical detail → maintain behavioural focus.",
+      "Evidence challenge → avoid defensiveness; clarify evidence limits.",
+      "Procedural compliance → require observable commitment.",
+      "Composed disagreement → preserve ambiguity; maintain structure.",
+      "No branch may assert causality or motive.",
+      "No branch may convert outage into behavioural evidence."
+    ],
+    "commitment_constraints": [
+      "Must be observable, owned, dated, feasible.",
+      "At least one manager-owned commitment addressing her earlier process failure.",
+      "At least one employee commitment addressing behaviour in defined context.",
+      "No attitudinal commitments.",
+      "No commitments requiring Aoife’s undisclosed cooperation.",
+      "No commitments requiring concession of technical position.",
+      "Commitments are experiments, not findings."
+    ],
+    "closing_constraints": [
+      "Must name follow-up date and initiator.",
+      "Must restate commitments precisely.",
+      "Must state concern remains open.",
+      "Must clarify what is not being said (role, rating, promotion, technical judgement).",
+      "Must establish continuity if context changes.",
+      "Must not reassure beyond authority.",
+      "Must not imply resolution.",
+      "Must not introduce outage as leverage."
+    ],
+    "scoring_constraints": [
+      "Excellent requires: specific behaviour named; impact stated; exploration elicited; multiple hypotheses; bilateral commitments; dated checkpoint.",
+      "Adequate requires: recognisable behavioural statement; some exploration; at least one concrete commitment; some next step.",
+      "Poor includes: outage used as evidence; causality asserted; attitudinal commitments; reassurance; no checkpoint."
+    ],
+    "feedback_constraints": [
+      "Feedback must reference observable behaviours only.",
+      "Must not attribute motives, personality, or internal states.",
+      "Must preserve ambiguity.",
+      "Must identify specific moves and effects.",
+      "Must offer behavioural alternatives, not principles.",
+      "Must not treat agreement as required for success."
+    ],
+    "prohibitions": [
+      "No dialogue.",
+      "No new facts.",
+      "No causal claims not supported by evidence.",
+      "No personality diagnoses.",
+      "No promises about promotion, rating, progression, compensation, or future opportunity.",
+      "No use of outage as behavioural proof.",
+      "No use of Nadia’s report as decisive evidence.",
+      "No requirement for apology or emotional disclosure.",
+      "No unilateral intervention with Aoife.",
+      "No removal of ambiguity."
+    ],
+    "ambiguity_rules": [
+      "Cause of silence remains unresolved.",
+      "Cause of routing shift remains unresolved.",
+      "Outage connection remains unresolved.",
+      "Root cause remains unresolved.",
+      "Employee intent remains unknown.",
+      "Manager contribution remains a hypothesis.",
+      "Commitments are experiments, not remedies.",
+      "Conversation ends with open question and date."
+    ],
+    "evidence_rules": [
+      "Evidence must be used only within its limits.",
+      "Observed vs reported must be distinguished.",
+      "Draft postmortem must remain non-final.",
+      "Anonymous report must not be treated as decisive.",
+      "Routing data must be treated as signal, not proof.",
+      "Peer feedback must be treated as limited and dated."
+    ],
+    "conversation_flow_rules": [
+      "Stage 1: One observable behaviour + effect.",
+      "Stage 2: Elicit account before rebuttal.",
+      "Stage 3: Hold multiple hypotheses open.",
+      "Stage 4: Build bilateral commitments.",
+      "Stage 5: Close with dated checkpoint and open status."
+    ]
+  }
+}

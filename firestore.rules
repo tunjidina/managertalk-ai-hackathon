@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // User profiles — users/{uid}
+    // Written by ensureUserProfile() on every sign-in.
+    // ----------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId;
+
+      allow update: if request.auth != null
+                    && request.auth.uid == userId;
+
+      // Owner-only, for the in-app Delete account (Google Play requirement).
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // ----------------------------------------------------------------
+    // Scenario progress — userScenarioState/{userId}_{scenarioId}
+    //
+    // NOTE ON THE `read` RULE
+    // The rule this replaces was:
+    //
+    //   allow read, write: if request.auth != null &&
+    //                      request.auth.uid == request.resource.data.userId;
+    //
+    // `request.resource` only exists on a WRITE. On a read it is null, so
+    // `request.resource.data.userId` errors and every read is denied —
+    // loadScenarioState() would never return saved progress.
+    //
+    // Reads must use `resource` (the stored document). The `resource == null`
+    // clause covers the first-ever read, before the document exists: without
+    // it, the opening getDoc() of a new user is denied rather than returning
+    // an empty snapshot.
+    // ----------------------------------------------------------------
+    match /userScenarioState/{docId} {
+
+      allow read: if request.auth != null
+                  && (resource == null
+                      || resource.data.userId == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      // The owner field cannot be reassigned by an update.
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Owner-only, for the in-app Delete account. `resource == null`
+      // lets the delete loop target every scenario id without failing on
+      // scenarios this user never started; deleting a missing document
+      // changes nothing.
+      allow delete: if request.auth != null
+                    && (resource == null
+                        || resource.data.userId == request.auth.uid);
+    }
+
+    // ----------------------------------------------------------------
+    // Progress analytics — scenarioAnalytics/{userId}_{scenarioId}_{ms}
+    // Written by logAnalyticsEvent() in src/engine/analytics.ts.
+    //
+    // Create-and-read-own, never mutate. An analytics record that can be
+    // edited or deleted after the fact is not a record of anything.
+    //
+    // `resource != null` on the read: a get() for a document that does not
+    // exist evaluates with resource == null, and `resource.data.userId`
+    // would then error and deny rather than returning an empty snapshot.
+    //
+    // A QUERY over this collection is only allowed when the query itself
+    // guarantees the rule — i.e. it must carry
+    // where('userId', '==', <uid>). An unfiltered collection read is
+    // denied, which is the intended behaviour.
+    // ----------------------------------------------------------------
+    match /scenarioAnalytics/{docId} {
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow read: if request.auth != null
+                  && resource != null
+                  && resource.data.userId == request.auth.uid;
+
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "scenario_id": "MT-S01",
+  "title": "The Passed-Over Performer",
+  "difficulty": "Intermediate",
+  "primary_competency": "Managing disengagement after a perceived career injustice",
+
+  "manager_profile": {
+    "name": "Daniel Okoro",
+    "role": "Commercial Insights Manager",
+    "tenure": "3 years",
+    "working_style": "Technically credible, accurate emotional reading, protective of team workload, conflict‑avoidant, tends to soften feedback.",
+    "communication_style": "Warm, process‑heavy, over‑explains, fills silence, avoids direct statements."
+  },
+
+  "employee_profile": {
+    "name": "Priya Raman",
+    "role": "Senior Data Analyst",
+    "tenure": "4 years",
+    "working_style": "Rigorous, trusted, deep institutional knowledge, selective knowledge sharing when trust is low.",
+    "communication_style": "Controlled, precise, formal, narrow answers, long pauses, requests written confirmation."
+  },
+
+  "stakes": {
+    "manager": [
+      "Must name performance decline clearly.",
+      "Must acknowledge promotion outcome and its personal cost.",
+      "Must surface retention intent.",
+      "Must protect operational continuity."
+    ],
+    "employee": [
+      "Feels procedural injustice and humiliation.",
+      "Interprets scrutiny as retaliation.",
+      "Is exploring external opportunities.",
+      "Holds critical pipeline knowledge."
+    ],
+    "organization": [
+      "Risk of losing key institutional knowledge.",
+      "Reporting pipeline exposed if employee resigns.",
+      "Stakeholder confidence erosion.",
+      "Trust erosion and perceived unfairness."
+    ]
+  },
+
+  "observable_evidence": [
+    "Two late monthly reports.",
+    "One segmentation error.",
+    "Reduced voluntary quality checks.",
+    "Minimal onboarding of the new team lead.",
+    "Formalized written communication.",
+    "Requests for written confirmation.",
+    "External job applications.",
+    "No formal grievance raised."
+  ],
+
+  "conversation": {
+    "opening": {
+      "required_behaviors": [
+        "Acknowledge promotion outcome factually.",
+        "Recognize emotional and professional cost.",
+        "State meeting purpose clearly.",
+        "Avoid relitigating the decision.",
+        "Avoid reassurance or promises."
+      ]
+    },
+
+    "performance_sbi": {
+      "required_behaviors": [
+        "Name specific late reports.",
+        "Name segmentation error.",
+        "Use Situation–Behavior–Impact.",
+        "Avoid personality labels.",
+        "Avoid burying performance in preamble."
+      ]
+    },
+
+    "exploration": {
+      "branches": {
+        "guarded": {
+          "signals": [
+            "Short, precise answers.",
+            "Long pauses.",
+            "Formal tone.",
+            "Requests for written confirmation."
+          ],
+          "manager_actions": [
+            "Use silence deliberately.",
+            "Invite perspective before asserting causality.",
+            "Acknowledge process harm.",
+            "Avoid premature reassurance."
+          ]
+        },
+        "factual_challenge": {
+          "signals": [
+            "Corrects details.",
+            "Questions evidence.",
+            "Requests specifics.",
+            "Pushes for clarity."
+          ],
+          "manager_actions": [
+            "Clarify evidence calmly.",
+            "Restate SBI cleanly.",
+            "Avoid defensiveness.",
+            "Avoid over‑explaining."
+          ]
+        },
+        "partial_openness": {
+          "signals": [
+            "Admits disappointment.",
+            "Connects promotion to performance.",
+            "Shares emotional impact."
+          ],
+          "manager_actions": [
+            "Acknowledge cost without relitigating.",
+            "Invite elaboration.",
+            "Disclose limits of influence factually.",
+            "Surface retention intent."
+          ]
+        },
+        "polite_disengagement": {
+          "signals": [
+            "Polite but distant tone.",
+            "Minimal elaboration.",
+            "Avoids discussing promotion.",
+            "Signals readiness to exit."
+          ],
+          "manager_actions": [
+            "Name avoidance gently.",
+            "Invite perspective.",
+            "Ask directly about intent to stay.",
+            "Avoid reassurance without commitments."
+          ]
+        }
+      }
+    },
+
+    "commitments": {
+      "manager_commitment": {
+        "fields": ["action", "owner", "date"],
+        "examples": [
+          "Clarify scope or visibility.",
+          "Provide development or recognition step.",
+          "Schedule follow‑up.",
+          "Initiate continuity planning."
+        ]
+      },
+      "employee_commitment": {
+        "fields": ["action", "owner", "date"],
+        "examples": [
+          "Quality control step.",
+          "Reporting timeline adjustment.",
+          "Pipeline handover milestone."
+        ]
+      }
+    },
+
+    "closing": {
+      "required_behaviors": [
+        "Avoid false reassurance.",
+        "Avoid promises of future promotion.",
+        "Agree concrete actions with dates.",
+        "Schedule follow‑up checkpoint.",
+        "Initiate documentation and cross‑training."
+      ]
+    }
+  },
+
+  "scoring_rubric": {
+    "dimensions": ["clarity", "empathy", "directness"],
+    "scale": [1, 2, 3, 4, 5]
+  },
+
+  "feedback_engine": {
+    "good": {
+      "did_well": "Clear SBI, balanced empathy, and constructive tone.",
+      "missed": "Could deepen exploration of retention intent.",
+      "next_step": "Strengthen commitment clarity and follow‑up planning.",
+      "tip": "Use silence strategically to surface perspective.",
+      "next_action": "continue_exploration"
+    },
+    "mid": {
+      "did_well": "Some evidence named and tone mostly balanced.",
+      "missed": "Needs clearer SBI and acknowledgment of process harm.",
+      "next_step": "Re‑anchor conversation with explicit evidence.",
+      "tip": "Acknowledge emotional cost before naming performance.",
+      "next_action": "acknowledge_process_harm"
+    },
+    "poor": {
+      "did_well": "Tone remained professional.",
+      "missed": "Evidence unclear, empathy low, directness insufficient.",
+      "next_step": "Restart with explicit SBI and acknowledgment of disappointment.",
+      "tip": "Avoid reassurance; name facts cleanly.",
+      "next_action": "restate_sbi"
+    }
+  }
+}
