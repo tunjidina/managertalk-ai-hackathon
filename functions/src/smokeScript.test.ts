@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -70,19 +70,50 @@ test('it behaves the same from any working directory', () => {
   }
 });
 
-test('it runs from a directory whose path contains spaces and non-ASCII characters', () => {
-  const root = mkdtempSync(join(tmpdir(), 'managertalk gate ré-'));
-  try {
-    mkdirSync(join(root, 'scripts'));
-    cpSync(scriptPath, join(root, 'scripts', 'smoke-live.mjs'));
-    cpSync(join(functionsDir, 'lib'), join(root, 'lib'), { recursive: true });
-    const result = run(join(root, 'scripts', 'smoke-live.mjs'), [], root);
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /DRY RUN/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+/**
+ * A copy of the script and its compiled core in a fresh temporary directory
+ * whose name starts with `prefix`, laid out like functions/ (script and lib
+ * side by side under a package.json). The copy is checked file by file before
+ * anything runs, so a fixture problem (a file that was not copied) fails here
+ * with its own message instead of looking like a script failure.
+ */
+function copyOfFunctions(prefix: string): { root: string; script: string } {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(join(root, 'scripts'));
+  cpSync(scriptPath, join(root, 'scripts', 'smoke-live.mjs'));
+  cpSync(join(functionsDir, 'lib'), join(root, 'lib'), { recursive: true });
+  // The real layout has functions/package.json above scripts/ and lib/. Pin
+  // the module type so a stray package.json in any ancestor of the temporary
+  // directory (for example one in a user's home folder) cannot change how the
+  // compiled CommonJS files are loaded.
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'copy', type: 'commonjs' }));
+
+  const wanted = (readdirSync(join(functionsDir, 'lib'), { recursive: true }) as string[]).sort();
+  const copied = (readdirSync(join(root, 'lib'), { recursive: true }) as string[]).sort();
+  assert.deepEqual(copied, wanted, 'fixture: the compiled lib was not copied completely into ' + root);
+  assert.ok(existsSync(join(root, 'lib', 'smokeCore.js')), 'fixture: lib/smokeCore.js is missing from ' + root);
+  assert.ok(existsSync(join(root, 'lib', 'shared', 'data', 'scenarios', 'mt-s02.json')), 'fixture: the blueprint JSON is missing from ' + root);
+  return { root, script: join(root, 'scripts', 'smoke-live.mjs') };
+}
+
+// Spaces and non-ASCII characters are tested separately so that a failure on
+// another platform says which kind of character the loader cannot handle.
+for (const [label, prefix] of [
+  ['spaces', 'managertalk gate '],
+  ['non-ASCII characters', 'managertalk-gaté-ré-'],
+  ['spaces and non-ASCII characters', 'managertalk gate ré-']
+]) {
+  test('it runs from a directory whose path contains ' + label, () => {
+    const copy = copyOfFunctions(prefix);
+    try {
+      const result = run(copy.script, [], copy.root);
+      assert.equal(result.status, 0, 'path: ' + copy.script + '\n' + result.stderr);
+      assert.match(result.stdout, /DRY RUN/);
+    } finally {
+      rmSync(copy.root, { recursive: true, force: true });
+    }
+  });
+}
 
 test('a missing build gives a clear instruction instead of a stack trace', () => {
   const root = mkdtempSync(join(tmpdir(), 'smoke-nobuild-'));
@@ -92,6 +123,7 @@ test('a missing build gives a clear instruction instead of a stack trace', () =>
     const result = run(join(root, 'scripts', 'smoke-live.mjs'), [], root);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /run "npm run build" in functions\/ first/);
+    assert.match(result.stderr, /Details: .*smokeCore\.js/, 'names the file that could not be found');
     assert.ok(!/at .*node:internal/.test(result.stderr), 'no stack trace');
   } finally {
     rmSync(root, { recursive: true, force: true });

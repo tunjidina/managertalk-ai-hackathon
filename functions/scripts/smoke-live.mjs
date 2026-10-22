@@ -33,6 +33,9 @@ try {
 } catch (error) {
   if (error && error.code === 'ERR_MODULE_NOT_FOUND') {
     console.error('The build output is missing or incomplete: run "npm run build" in functions/ first.');
+    // Name the file Node could not find (a path only; never a key or a reply),
+    // so a genuinely missing build can be told apart from a loader problem.
+    console.error('Details: ' + String(error.message).split('\n')[0]);
     process.exit(1);
   }
   throw error;
