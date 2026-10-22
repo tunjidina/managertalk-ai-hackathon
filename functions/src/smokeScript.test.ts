@@ -8,7 +8,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -71,30 +71,130 @@ test('it behaves the same from any working directory', () => {
 });
 
 /**
+ * Copies a directory tree with only mkdirSync, readdirSync and copyFileSync,
+ * and lists one with readdirSync, so the fixture depends on the basic file
+ * calls and not on fs.cpSync or readdirSync's recursive mode.
+ *
+ * Why not cpSync: on Windows (Node 22.20.0) cpSync into a destination whose
+ * path contains a non-ASCII character returned without error but left no
+ * directory at that path, so the fixture then failed with ENOENT before the
+ * script under test ever ran. That is a copy problem in the test setup, not
+ * the smoke script's path handling. See the platform note test below, which
+ * records what cpSync does on the machine running the tests.
+ */
+function copyTree(from: string, to: string): void {
+  mkdirSync(to, { recursive: true });
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    const source = join(from, entry.name);
+    const target = join(to, entry.name);
+    if (entry.isDirectory()) {
+      copyTree(source, target);
+    } else {
+      copyFileSync(source, target);
+    }
+  }
+}
+
+/** Relative paths of every file and directory under `dir`, sorted, with / separators. */
+function listTree(dir: string, prefix = ''): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const relative = prefix + entry.name;
+    found.push(relative);
+    if (entry.isDirectory()) {
+      found.push(...listTree(join(dir, entry.name), relative + '/'));
+    }
+  }
+  return found.sort();
+}
+
+/**
  * A copy of the script and its compiled core in a fresh temporary directory
  * whose name starts with `prefix`, laid out like functions/ (script and lib
  * side by side under a package.json). The copy is checked file by file before
  * anything runs, so a fixture problem (a file that was not copied) fails here
- * with its own message instead of looking like a script failure.
+ * with its own message, including what the temporary root actually contains,
+ * instead of looking like a script failure.
  */
 function copyOfFunctions(prefix: string): { root: string; script: string } {
   const root = mkdtempSync(join(tmpdir(), prefix));
+  assert.ok(existsSync(root), 'fixture: the temporary directory was not created: ' + root);
   mkdirSync(join(root, 'scripts'));
-  cpSync(scriptPath, join(root, 'scripts', 'smoke-live.mjs'));
-  cpSync(join(functionsDir, 'lib'), join(root, 'lib'), { recursive: true });
+  copyFileSync(scriptPath, join(root, 'scripts', 'smoke-live.mjs'));
+  copyTree(join(functionsDir, 'lib'), join(root, 'lib'));
   // The real layout has functions/package.json above scripts/ and lib/. Pin
   // the module type so a stray package.json in any ancestor of the temporary
   // directory (for example one in a user's home folder) cannot change how the
   // compiled CommonJS files are loaded.
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'copy', type: 'commonjs' }));
 
-  const wanted = (readdirSync(join(functionsDir, 'lib'), { recursive: true }) as string[]).sort();
-  const copied = (readdirSync(join(root, 'lib'), { recursive: true }) as string[]).sort();
-  assert.deepEqual(copied, wanted, 'fixture: the compiled lib was not copied completely into ' + root);
+  assert.ok(
+    existsSync(join(root, 'lib')),
+    'fixture: no lib directory at ' + root + '; the root contains: ' + JSON.stringify(readdirSync(root))
+  );
+  assert.deepEqual(
+    listTree(join(root, 'lib')),
+    listTree(join(functionsDir, 'lib')),
+    'fixture: the compiled lib was not copied completely into ' + root
+  );
   assert.ok(existsSync(join(root, 'lib', 'smokeCore.js')), 'fixture: lib/smokeCore.js is missing from ' + root);
   assert.ok(existsSync(join(root, 'lib', 'shared', 'data', 'scenarios', 'mt-s02.json')), 'fixture: the blueprint JSON is missing from ' + root);
   return { root, script: join(root, 'scripts', 'smoke-live.mjs') };
 }
+
+// The copy helper itself, under spaced and accented names. If a platform
+// cannot create or copy into such a directory, this fails here, by name,
+// instead of surfacing later as a script failure.
+for (const [label, name] of [
+  ['spaces', 'copy tree '],
+  ['an accented name', 'copy-tré-'],
+  ['spaces and an accented name', 'copy tree ré-']
+]) {
+  test('the fixture copy helper reproduces a nested tree under ' + label, () => {
+    const base = mkdtempSync(join(tmpdir(), name));
+    try {
+      const source = join(base, 'source');
+      mkdirSync(join(source, 'a', 'b'), { recursive: true });
+      writeFileSync(join(source, 'top.txt'), 'top');
+      writeFileSync(join(source, 'a', 'mid.json'), '{"x":1}');
+      writeFileSync(join(source, 'a', 'b', 'deep.js'), 'module.exports = 1;');
+      const destination = join(base, 'dest ré');
+      copyTree(source, destination);
+      assert.deepEqual(listTree(destination), listTree(source));
+      assert.equal(readFileSync(join(destination, 'a', 'b', 'deep.js'), 'utf8'), 'module.exports = 1;');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+}
+
+// Informational: records what fs.cpSync does on the machine running the tests,
+// so the cause of the Windows fixture failure is visible in the output rather
+// than inferred. It never fails: it documents a platform behaviour that the
+// fixture above deliberately avoids.
+test('platform note: fs.cpSync into an accented destination (informational)', (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'cpsync-note-'));
+  try {
+    const source = join(base, 'source');
+    mkdirSync(join(source, 'sub'), { recursive: true });
+    writeFileSync(join(source, 'sub', 'a.txt'), 'x');
+    const destination = join(base, 'dest ré');
+    let outcome: string;
+    try {
+      cpSync(source, destination, { recursive: true });
+      outcome = existsSync(join(destination, 'sub', 'a.txt'))
+        ? 'copied correctly'
+        : 'returned without error but nothing is at the destination; entries beside it: ' + JSON.stringify(readdirSync(base));
+    } catch (error) {
+      outcome = 'threw ' + (error as NodeJS.ErrnoException).code;
+    }
+    const note = 'fs.cpSync into an accented destination on ' + process.platform + ' node ' + process.version + ': ' + outcome;
+    t.diagnostic(note);
+    console.log('[platform note] ' + note);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
 
 // Spaces and non-ASCII characters are tested separately so that a failure on
 // another platform says which kind of character the loader cannot handle.
