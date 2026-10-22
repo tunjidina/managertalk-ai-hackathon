@@ -25,11 +25,22 @@ export interface SmokeVariant {
   /** Extra top-level request fields. Experimental variants only. */
   extraBody?: Record<string, unknown>;
   experimental?: boolean;
+  /**
+   * Other spellings of the same model that Nebius pages use. Tried, in order,
+   * only if `model` is not in the live model list (exact or case-insensitive).
+   */
+  aliases?: string[];
 }
 
 export function defaultVariants(): SmokeVariant[] {
   return [
-    { name: 'nano-default', model: NEMOTRON_NANO_MODEL_ID },
+    {
+      name: 'nano-default',
+      model: NEMOTRON_NANO_MODEL_ID,
+      // The Token Factory endpoints page lists Nano as NVIDIA/Nemotron-3-Nano-30B-A3B;
+      // the cookbook's lowercase spelling is covered by the case-insensitive match.
+      aliases: ['NVIDIA/Nemotron-3-Nano-30B-A3B']
+    },
     { name: 'super-default', model: NEMOTRON_SUPER_MODEL_ID },
     {
       name: 'super-thinking-off (experimental)',
@@ -75,6 +86,18 @@ export interface SmokeOptions {
   maxCalls?: number;
   maxTokens?: number;
   timeoutMs?: number;
+  /**
+   * Print a short preview of each reply that passed validation. Off by
+   * default: the default output is counts, timings and token usage only.
+   * Raw bodies and reasoning are never printed in either mode.
+   */
+  showReplies?: boolean;
+  /**
+   * Proceed without verifying model ids against the model list. Off by
+   * default: if the list cannot be read, no completions are sent. Use it only
+   * to test a model the list endpoint does not show; ids are then unverified.
+   */
+  skipModelList?: boolean;
   emit: (line: string) => void;
 }
 
@@ -118,7 +141,8 @@ export async function runSmoke(options: SmokeOptions): Promise<SmokeReport> {
     options.emit(key ? line.split(key).join('[redacted]') : line);
   };
 
-  const completionBudget = Math.max(0, budget - 1);
+  // The model-list call uses one request of the budget unless it is skipped.
+  const completionBudget = Math.max(0, options.skipModelList ? budget : budget - 1);
   const report: SmokeReport = {
     live: options.live,
     plannedCalls: options.live ? budget : 0,
@@ -153,44 +177,82 @@ export async function runSmoke(options: SmokeOptions): Promise<SmokeReport> {
 
   const authHeaders = { Authorization: 'Bearer ' + key, Accept: 'application/json' };
 
-  // 1) Model list: confirm the exact ids before spending completions.
-  report.callsMade += 1;
-  try {
-    const listed = await fetchImpl(NEBIUS_MODELS_URL, { method: 'GET', redirect: 'error', headers: authHeaders });
-    report.modelListChecked = listed.ok;
-    if (listed.status === 401 || listed.status === 403) {
-      emit('The model list request was refused (status ' + listed.status + '): check the key. No completions were sent.');
+  // 1) Model list: confirm the exact ids before spending completions. If it
+  //    cannot be read, stop: completions against unverified ids would be a
+  //    guess, and each failed attempt can wait for the full timeout.
+  if (options.skipModelList) {
+    emit('Model list check SKIPPED (--skip-model-list): model ids are unverified.');
+  } else {
+    report.callsMade += 1;
+    const listController = new AbortController();
+    const listTimer = setTimeout(() => listController.abort(), timeoutMs);
+    let ids: string[] | null = null;
+    let failure = 'network error or timeout';
+    try {
+      const listed = await fetchImpl(NEBIUS_MODELS_URL, {
+        method: 'GET',
+        redirect: 'error',
+        signal: listController.signal,
+        headers: authHeaders
+      });
+      report.modelListChecked = listed.ok;
+      if (listed.status === 401 || listed.status === 403) {
+        emit('The model list request was refused (status ' + listed.status + '): check the key. No completions were sent.');
+        return report;
+      }
+      if (!listed.ok) {
+        failure = 'status ' + listed.status;
+      } else {
+        const body = (await listed.json()) as { data?: Array<{ id?: unknown }> };
+        ids = (body.data || []).map((entry) => entry.id).filter((id): id is string => typeof id === 'string');
+      }
+    } catch (error) {
+      failure = 'network error, timeout or unreadable response';
+    } finally {
+      clearTimeout(listTimer);
+    }
+
+    if (ids === null) {
+      report.modelListChecked = false;
+      emit('Model list could not be read (' + failure + '). No completions were sent. Re-run with --skip-model-list to test unverified ids.');
       return report;
     }
-    if (listed.ok) {
-      const body = (await listed.json()) as { data?: Array<{ id?: unknown }> };
-      const ids = (body.data || []).map((entry) => entry.id).filter((id): id is string => typeof id === 'string');
-      emit('Model list returned ' + ids.length + ' models.');
-      // Only spend completions on ids the platform actually lists. A
-      // case-only difference is corrected to the listed spelling for this run
-      // and reported, so the product default can be fixed from real evidence.
-      const checked: SmokeVariant[] = [];
-      for (const variant of variants) {
-        const exact = ids.indexOf(variant.model) !== -1;
-        const listedSpelling = ids.find((id) => id.toLowerCase() === variant.model.toLowerCase());
-        if (exact) {
-          emit('  ' + variant.model + ': exact match');
-          checked.push(variant);
-        } else if (listedSpelling) {
-          emit('  ' + variant.model + ': CASE MISMATCH, using the listed spelling ' + listedSpelling + ' for this run');
-          checked.push({ ...variant, model: listedSpelling });
-        } else {
-          emit('  ' + variant.model + ': NOT FOUND, skipped');
-        }
+
+    emit('Model list returned ' + ids.length + ' models.');
+    // Only spend completions on ids the platform actually lists. A case-only
+    // difference, or a documented alias, is resolved to the listed spelling
+    // for this run and reported, so the product default can be fixed from
+    // real evidence.
+    const checked: SmokeVariant[] = [];
+    const findListed = (wanted: string): string | undefined =>
+      ids!.indexOf(wanted) !== -1 ? wanted : ids!.find((id) => id.toLowerCase() === wanted.toLowerCase());
+    for (const variant of variants) {
+      const direct = findListed(variant.model);
+      if (direct === variant.model) {
+        emit('  ' + variant.model + ': exact match');
+        checked.push(variant);
+        continue;
       }
-      variants = checked;
-      const nemotron = ids.filter((id) => id.toLowerCase().indexOf('nemotron') !== -1);
-      emit('  Nemotron ids listed: ' + (nemotron.length ? nemotron.join(', ') : 'none'));
-    } else {
-      emit('Model list request failed with status ' + listed.status + '.');
+      if (direct) {
+        emit('  ' + variant.model + ': CASE MISMATCH, using the listed spelling ' + direct + ' for this run');
+        checked.push({ ...variant, model: direct });
+        continue;
+      }
+      const aliasHit = (variant.aliases || []).map(findListed).find((id): id is string => !!id);
+      if (aliasHit) {
+        emit('  ' + variant.model + ': NOT LISTED, but its alias is; using ' + aliasHit + ' for this run');
+        checked.push({ ...variant, model: aliasHit });
+      } else {
+        emit('  ' + variant.model + ': NOT FOUND, skipped');
+      }
     }
-  } catch (error) {
-    emit('Model list request failed (network).');
+    variants = checked;
+    const nemotron = ids.filter((id) => id.toLowerCase().indexOf('nemotron') !== -1);
+    emit('  Nemotron ids listed: ' + (nemotron.length ? nemotron.join(', ') : 'none'));
+    if (variants.length === 0) {
+      emit('None of the candidate models are listed. No completions were sent.');
+      return report;
+    }
   }
 
   // 2) Completions, round-robin over variants and sample prompts, within budget.
@@ -248,7 +310,11 @@ export async function runSmoke(options: SmokeOptions): Promise<SmokeReport> {
         const parsed = parseModelText(message ? message.content : undefined);
         record.validation = parsed.ok ? 'ok' : parsed.reason;
         if (parsed.ok) {
-          emit('  [' + variant.name + '] reply: ' + parsed.lines.join(' / ').slice(0, 200));
+          emit(
+            options.showReplies
+              ? '  [' + variant.name + '] reply: ' + parsed.lines.join(' / ').slice(0, 200)
+              : '  [' + variant.name + '] reply passed validation (' + parsed.lines.length + ' lines); text not shown'
+          );
         }
       }
     } catch (error) {
@@ -274,6 +340,17 @@ export async function runSmoke(options: SmokeOptions): Promise<SmokeReport> {
     const promptTokens = rows.reduce((sum, row) => sum + (row.promptTokens || 0), 0);
     const completionTokens = rows.reduce((sum, row) => sum + (row.completionTokens || 0), 0);
     const statuses = rows.map((row) => String(row.status)).join(',');
+    const tally = (values: string[]) => {
+      const counts: Record<string, number> = {};
+      values.forEach((value) => (counts[value] = (counts[value] || 0) + 1));
+      return Object.keys(counts).sort().map((key) => key + ' x' + counts[key]).join(', ');
+    };
+    const hitCap = rows.filter((row) => typeof row.completionTokens === 'number' && row.completionTokens >= maxTokens).length;
+    emit(
+      '    outcomes: ' + tally(rows.map((row) => row.validation)) +
+        '; finish: ' + tally(rows.map((row) => row.finishReason || 'none')) +
+        '; reached max_tokens: ' + hitCap
+    );
     emit(
       '  ' + variant.name + ': ' + rows.length + ' calls, ' + ok + ' valid, ' + nulls + ' empty-content, ' +
         reasoning + ' with reasoning field, latency p50 ' + percentile(latencies, 50) + ' ms / p95 ' + percentile(latencies, 95) +

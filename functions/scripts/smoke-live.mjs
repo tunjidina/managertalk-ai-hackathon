@@ -12,7 +12,11 @@
 //     node scripts/smoke-live.mjs --live --calls 12
 //
 // Options: --live, --calls N (total requests incl. the model-list call;
-// hard cap 20), --max-tokens N (ceiling 1024).
+// hard cap 20), --max-tokens N (ceiling 1024), --show-replies (print a short
+// preview of each reply that passed validation; off by default, so the default
+// output is counts, timings and token usage only), --skip-model-list (send
+// completions without verifying ids; by default an unreadable model list stops
+// the run before any completion).
 // The key is read only from NEBIUS_API_KEY and is redacted from all output.
 
 import { fileURLToPath } from 'node:url';
@@ -23,6 +27,8 @@ const { runSmoke, HARD_MAX_CALLS } = await import(join(here, '..', 'lib', 'smoke
 
 const args = process.argv.slice(2);
 const live = args.includes('--live');
+const showReplies = args.includes('--show-replies');
+const skipModelList = args.includes('--skip-model-list');
 
 function numberFlag(name) {
   const index = args.indexOf(name);
@@ -58,6 +64,8 @@ try {
     fetchImpl: live ? fetch : undefined,
     maxCalls: maxCalls === undefined ? undefined : Math.min(maxCalls, HARD_MAX_CALLS),
     maxTokens,
+    showReplies,
+    skipModelList,
     emit: (line) => console.log(line)
   });
 } catch (error) {

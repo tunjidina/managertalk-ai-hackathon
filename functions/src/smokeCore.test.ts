@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { HARD_MAX_CALLS, NEBIUS_MODELS_URL, defaultVariants, runSmoke } from './smokeCore';
 import { NEBIUS_CHAT_COMPLETIONS_URL, NEMOTRON_NANO_MODEL_ID } from './nebiusModel';
-import { TEST_KEY, completion, jsonResponse, recordingFetch } from './fetchSupport.test';
+import { TEST_KEY, completion, hangingFetch, jsonResponse, recordingFetch } from './fetchSupport.test';
 
 function collect() {
   const lines: string[] = [];
@@ -99,12 +99,86 @@ test('the experimental variant adds its extra field; the others send the standar
 
 test('failures are recorded as codes, not bodies', async () => {
   const out = collect();
-  const failing = recordingFetch((call) =>
-    call.url === NEBIUS_MODELS_URL ? jsonResponse({}, 500) : jsonResponse({ error: 'UPSTREAM-BODY' }, 429)
-  );
-  const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: failing, maxCalls: 4, emit: out.emit });
+  const failing = recordingFetch((_call) => jsonResponse({ error: 'UPSTREAM-BODY' }, 429));
+  const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: failing, maxCalls: 4, skipModelList: true, emit: out.emit });
+  assert.ok(report.calls.length > 0);
   assert.ok(report.calls.every((call) => call.status === 429));
   assert.ok(!out.lines.join('\n').includes('UPSTREAM-BODY'));
+});
+
+test('an unreadable model list stops the run before any completion', async () => {
+  for (const respond of [
+    () => jsonResponse({ error: 'x' }, 500),
+    () => jsonResponse({ error: 'x' }, 404),
+    () => jsonResponse('not json at all'),
+    () => { throw new TypeError('fetch failed'); }
+  ]) {
+    const out = collect();
+    const fake = recordingFetch(respond as never);
+    const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, maxCalls: 10, emit: out.emit });
+    assert.equal(fake.calls.length, 1, 'only the model list was requested');
+    assert.equal(report.calls.length, 0);
+    assert.match(out.lines.join('\n'), /Model list could not be read .* No completions were sent/);
+  }
+});
+
+test('a model list that hangs times out and stops the run', async () => {
+  const out = collect();
+  const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: hangingFetch(), maxCalls: 10, timeoutMs: 30, emit: out.emit });
+  assert.equal(report.callsMade, 1);
+  assert.equal(report.calls.length, 0);
+  assert.match(out.lines.join('\n'), /could not be read/);
+});
+
+test('--skip-model-list sends completions with the full budget and says the ids are unverified', async () => {
+  const out = collect();
+  const fake = nebiusFake();
+  const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, maxCalls: 4, skipModelList: true, emit: out.emit });
+  assert.ok(fake.calls.every((call) => call.url === NEBIUS_CHAT_COMPLETIONS_URL), 'the model list is not requested');
+  assert.equal(fake.calls.length, 4);
+  assert.equal(report.callsMade, 4);
+  assert.match(out.lines.join('\n'), /Model list check SKIPPED .* unverified/);
+});
+
+test('when none of the candidates are listed, no completions are sent', async () => {
+  const out = collect();
+  const none = recordingFetch(() => jsonResponse({ data: [{ id: 'other/model' }] }));
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: none, maxCalls: 10, emit: out.emit });
+  assert.equal(none.calls.length, 1);
+  assert.match(out.lines.join('\n'), /None of the candidate models are listed/);
+});
+
+test('the summary tallies outcomes, finish reasons and token-cap hits so a failure can be told apart', async () => {
+  const out = collect();
+  let n = 0;
+  const mixed = recordingFetch((call) => {
+    if (call.url === NEBIUS_MODELS_URL) {
+      return jsonResponse({ data: [{ id: NEMOTRON_NANO_MODEL_ID }] });
+    }
+    n += 1;
+    if (n === 1) {
+      return jsonResponse(completion(REPLY));
+    }
+    if (n === 2) {
+      return jsonResponse(completion(null, { reasoning: 'SECRET-REASONING-TEXT' }, { finish_reason: 'length' }));
+    }
+    const capped = completion(REPLY);
+    capped.usage = { prompt_tokens: 50, completion_tokens: 600 };
+    return jsonResponse(capped);
+  });
+  await runSmoke({
+    live: true,
+    apiKey: TEST_KEY,
+    fetchImpl: mixed,
+    variants: [{ name: 'only', model: NEMOTRON_NANO_MODEL_ID }],
+    maxCalls: 4,
+    emit: out.emit
+  });
+  const all = out.lines.join('\n');
+  assert.match(all, /outcomes: not_text x1, ok x2/);
+  assert.match(all, /finish: length x1, stop x2/);
+  assert.match(all, /reached max_tokens: 1/);
+  assert.ok(!all.includes('SECRET-REASONING-TEXT'));
 });
 
 test('models the platform does not list are skipped, so no completions are wasted on them', async () => {
@@ -164,4 +238,52 @@ test('requests only ever go to the two Token Factory URLs', async () => {
   const fake = nebiusFake();
   await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, maxCalls: 20, emit: () => undefined });
   assert.ok(fake.calls.every((call) => call.url === NEBIUS_MODELS_URL || call.url === NEBIUS_CHAT_COMPLETIONS_URL));
+});
+
+test('replies are not printed by default; only a validation note appears', async () => {
+  const out = collect();
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: nebiusFake(), maxCalls: 4, emit: out.emit });
+  const all = out.lines.join('\n');
+  assert.ok(!all.includes(REPLY));
+  assert.match(all, /reply passed validation \(\d+ lines\); text not shown/);
+});
+
+test('--show-replies prints a short preview of validated replies, never reasoning', async () => {
+  const out = collect();
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: nebiusFake(), maxCalls: 4, showReplies: true, emit: out.emit });
+  const all = out.lines.join('\n');
+  assert.ok(all.includes(REPLY));
+  assert.ok(!all.includes('SECRET-REASONING-TEXT'));
+});
+
+test('a documented alternative spelling of Nano is used when the primary id is not listed', async () => {
+  const out = collect();
+  const aliasOnly = recordingFetch((call) =>
+    call.url === NEBIUS_MODELS_URL ? jsonResponse({ data: [{ id: 'NVIDIA/Nemotron-3-Nano-30B-A3B' }] }) : jsonResponse(completion(REPLY))
+  );
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: aliasOnly, maxCalls: 4, emit: out.emit });
+  const models = aliasOnly.calls.slice(1).map((call) => call.body.model);
+  assert.ok(models.length > 0);
+  assert.ok(models.every((model) => model === 'NVIDIA/Nemotron-3-Nano-30B-A3B'));
+  assert.match(out.lines.join('\n'), /NOT LISTED, but its alias is; using NVIDIA\/Nemotron-3-Nano-30B-A3B/);
+});
+
+test('the cookbook spelling (all lowercase) is matched case-insensitively and reported', async () => {
+  const out = collect();
+  const lower = recordingFetch((call) =>
+    call.url === NEBIUS_MODELS_URL ? jsonResponse({ data: [{ id: 'nvidia/nvidia-nemotron-3-nano-30b-a3b' }] }) : jsonResponse(completion(REPLY))
+  );
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: lower, maxCalls: 3, emit: out.emit });
+  assert.ok(lower.calls.slice(1).every((call) => call.body.model === 'nvidia/nvidia-nemotron-3-nano-30b-a3b'));
+  assert.match(out.lines.join('\n'), /CASE MISMATCH, using the listed spelling nvidia\/nvidia-nemotron-3-nano-30b-a3b/);
+});
+
+test('an unrelated listed model is never used as an alias', async () => {
+  const out = collect();
+  const unrelated = recordingFetch((call) =>
+    call.url === NEBIUS_MODELS_URL ? jsonResponse({ data: [{ id: 'other/model' }] }) : jsonResponse(completion(REPLY))
+  );
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: unrelated, maxCalls: 6, emit: out.emit });
+  assert.equal(unrelated.calls.length, 1, 'only the model list was requested');
+  assert.match(out.lines.join('\n'), /NOT FOUND, skipped/);
 });
