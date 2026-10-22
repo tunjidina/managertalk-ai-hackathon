@@ -3,7 +3,8 @@ import { join } from 'path';
 
 import mtS02 from '../../data/scenarios/mt-s02.json';
 import { ScenarioBlueprint } from '../../types/scenarioBlueprint';
-import { sourceLabel } from '../../screens/s02/S02StageScreen';
+import { chipFor, sourceLabel } from '../../screens/s02/S02StageScreen';
+import { SCRIPTED_REPLIES } from './scriptedDialogue';
 import {
   ConversationEngine,
   EngineErrorCode,
@@ -16,7 +17,7 @@ import {
   MOCK_MODEL_ID,
   MAX_PRIOR_TURNS,
   RemoteConversationEngine,
-  StubConversationEngine,
+  ScriptedConversationEngine,
   buildStagePrompt,
   buildSystemPrompt,
   ALLOWED_API_PATHS,
@@ -294,7 +295,7 @@ describe('FallbackConversationEngine', () => {
   }
 
   test('answers from the stub and records why when the remote fails', async () => {
-    const engine = new FallbackConversationEngine(failing('timeout'), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(failing('timeout'), new ScriptedConversationEngine());
     const result = await engine.respond(request());
     const data = dataOf(result);
     expect(data?.source).toBe('stub');
@@ -308,7 +309,7 @@ describe('FallbackConversationEngine', () => {
     ['a malformed reply', () => jsonResponse(200, { lines: 'not an array' }), 'invalid-response']
   ])('falls back with the real remote reason after %s', async (_label, makeResponse, reason) => {
     fetchMock.mockResolvedValue(makeResponse());
-    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
     const result = await engine.respond(request());
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const data = dataOf(result);
@@ -320,7 +321,7 @@ describe('FallbackConversationEngine', () => {
   test('does not hide an invalid request behind the stub', async () => {
     const engine = new FallbackConversationEngine(
       failing('invalid-request'),
-      new StubConversationEngine()
+      new ScriptedConversationEngine()
     );
     const result = await engine.respond(request());
     expect(result).toMatchObject({ ok: false, code: 'invalid-request' });
@@ -328,7 +329,7 @@ describe('FallbackConversationEngine', () => {
 
   test('passes a successful remote reply through untouched', async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, { lines: ['Go on.'] }));
-    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
     const result = await engine.respond(request());
     const data = dataOf(result);
     expect(data?.source).toBe('remote');
@@ -442,7 +443,7 @@ describe('isAllowedEndpoint (development policy: npm start only)', () => {
 describe('createConversationEngine', () => {
   test('uses the stub alone when no endpoint is configured', () => {
     const engine = createConversationEngine();
-    expect(engine).toBeInstanceOf(StubConversationEngine);
+    expect(engine).toBeInstanceOf(ScriptedConversationEngine);
   });
 
   test('wraps the remote engine with the stub fallback for the allowed route', () => {
@@ -454,7 +455,7 @@ describe('createConversationEngine', () => {
 
   test('by default (strict under Jest) rejects a loopback endpoint', () => {
     process.env.REACT_APP_S02_ENGINE_ENDPOINT = LOCAL_EMULATOR;
-    expect(createConversationEngine()).toBeInstanceOf(StubConversationEngine);
+    expect(createConversationEngine()).toBeInstanceOf(ScriptedConversationEngine);
   });
 
   test('in development sends the token to a loopback endpoint', async () => {
@@ -496,7 +497,7 @@ describe('createConversationEngine', () => {
       const engine = createConversationEngine(policy);
       const result = await engine.respond(request());
 
-      expect(engine).toBeInstanceOf(StubConversationEngine);
+      expect(engine).toBeInstanceOf(ScriptedConversationEngine);
       expect(getIdToken).not.toHaveBeenCalled();
       expect(fetchMock).not.toHaveBeenCalled();
       const data = dataOf(result);
@@ -663,7 +664,7 @@ describe('live function failures, end to end on the client', () => {
 
   async function labelFor(respond: () => Promise<Response>): Promise<string | null> {
     fetchMock.mockImplementation(respond);
-    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
     const data = dataOf(await engine.respond(request()));
     return sourceLabel({
       stage: 'sbi',
@@ -723,7 +724,7 @@ describe('daily-limit responses, end to end on the client', () => {
 
   async function outcome(headers: Record<string, string>) {
     fetchMock.mockResolvedValue(jsonResponse(429, { error: { code: 'daily_limit' } }, headers));
-    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
     const data = dataOf(await engine.respond(request()));
     return {
       data,
@@ -765,7 +766,92 @@ describe('daily-limit responses, end to end on the client', () => {
 
   test('a response object with no headers at all does not break the engine', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 429, json: () => Promise.resolve({}) } as unknown as Response);
-    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
     expect(dataOf(await engine.respond(request())).fallbackReason).toBe('rate-limited');
+  });
+});
+
+describe('ScriptedConversationEngine', () => {
+  const OWNS_PART = 'I rushed that earlier feedback and I never followed up.';
+
+  async function reply(overrides: Partial<EngineRequest>) {
+    return dataOf(await new ScriptedConversationEngine().respond(request(overrides)));
+  }
+
+  function asTurn(data: EngineResponse, stage: EngineRequest['stage'] = 'sbi'): EngineTurn {
+    return {
+      stage,
+      managerInput: 'Input',
+      employeeLines: data.lines,
+      style: data.style,
+      source: data.source,
+      model: data.model,
+      fallbackReason: data.fallbackReason
+    };
+  }
+
+  test('answers with an approved scripted reply and marks the source as scripted', async () => {
+    const data = await reply({});
+    expect(data.source).toBe('stub');
+    expect(data.model).toBeUndefined();
+    expect(SCRIPTED_REPLIES.some((r) => r.lines.join('|') === data.lines.join('|'))).toBe(true);
+  });
+
+  test('every reply it can produce is visibly labelled "Scripted"', async () => {
+    const inputs = ['What happened?', 'The outage shows you shut people down.', 'Your reply caused the silence.', OWNS_PART];
+    for (const stage of ['sbi', 'exploration', 'hypotheses', 'commitments', 'closing'] as const) {
+      for (const managerInput of inputs) {
+        const turn = asTurn(await reply({ stage, managerInput }), stage);
+        expect(sourceLabel(turn)).toBe('Scripted reply');
+        expect(chipFor(turn)).toEqual({ kind: 'scripted' });
+      }
+    }
+  });
+
+  test('a fallback reply is labelled scripted and keeps its reason', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(502, {}));
+    const engine = new FallbackConversationEngine(remote(), new ScriptedConversationEngine());
+    const turn = asTurn(dataOf(await engine.respond(request())));
+    expect(turn.fallbackReason).toBe('unavailable');
+    expect(chipFor(turn)).toEqual({ kind: 'scripted' });
+    expect(sourceLabel(turn)).toBe('Scripted reply · the AI conversation partner is unavailable');
+  });
+
+  test('the Considering order holds through the engine: restrained first, fuller on the next', async () => {
+    const engine = new ScriptedConversationEngine();
+    const first = dataOf(await engine.respond(request({ stage: 'exploration', managerInput: OWNS_PART })));
+    const second = dataOf(
+      await engine.respond(
+        request({ stage: 'exploration', managerInput: OWNS_PART, priorTurns: [asTurn(first, 'exploration')] })
+      )
+    );
+    expect(first.lines).toEqual(SCRIPTED_REPLIES.find((r) => r.id === 'EXP-O1')!.lines);
+    expect(second.lines).toEqual(SCRIPTED_REPLIES.find((r) => r.id === 'EXP-O2')!.lines);
+
+    const replay = dataOf(await engine.respond(request({ stage: 'exploration', managerInput: OWNS_PART })));
+    expect(replay.lines).toEqual(first.lines);
+  });
+
+  test('a prohibition in the manager input blocks the Considering reply', async () => {
+    const data = await reply({ stage: 'sbi', managerInput: OWNS_PART + ' The outage proves it.' });
+    expect(data.constraintViolations.length).toBeGreaterThan(0);
+    expect(data.lines).not.toEqual(SCRIPTED_REPLIES.find((r) => r.id === 'EXP-O1')!.lines);
+  });
+
+  test('constraint violations are still reported verbatim from the blueprint', async () => {
+    const data = await reply({ stage: 'sbi', managerInput: 'Your reply caused the silence.' });
+    expect(data.constraintViolations).toContain('Stating Tomás caused silence.');
+  });
+
+  test('empty input is refused, as before', async () => {
+    const result = await new ScriptedConversationEngine().respond(request({ managerInput: '   ' }));
+    expect(result.ok).toBe(false);
+  });
+
+  test('no scripted line is ever shown as AI-generated or live', () => {
+    expect(chipFor({ stage: 'sbi', managerInput: 'x', employeeLines: ['y'], style: 'technical_detail', source: 'stub' })?.kind).toBe('scripted');
+    expect(chipFor({ stage: 'sbi', managerInput: 'x', employeeLines: ['y'], style: 'technical_detail', source: 'remote', model: MOCK_MODEL_ID })?.kind).toBe('mock');
+    expect(chipFor({ stage: 'sbi', managerInput: 'x', employeeLines: ['y'], style: 'technical_detail', source: 'remote', model: 'nvidia/some-model' })).toEqual({ kind: 'live', label: 'Live · nvidia/some-model' });
+    expect(chipFor({ stage: 'sbi', managerInput: 'x', employeeLines: ['y'], style: 'technical_detail' })).toBeNull();
   });
 });

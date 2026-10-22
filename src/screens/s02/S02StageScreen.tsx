@@ -7,6 +7,7 @@ import {
   stageScreenText
 } from '../../types/scenarioBlueprint';
 import { useS02SessionState } from '../../store/s02SessionState';
+import { Chip } from '../../ui';
 import {
   EngineTurn,
   MOCK_MODEL_ID,
@@ -68,6 +69,24 @@ export function sourceLabel(turn: EngineTurn): string | null {
   }
   return null;
 }
+/**
+ * The badge shown with each reply, so the origin is visible at a glance and
+ * not only in the sentence beneath. Scripted and fallback replies are always
+ * "Scripted"; only a validated model reply from the endpoint is "Live".
+ */
+export function chipFor(turn: EngineTurn): { kind: 'scripted' | 'mock' | 'live'; label?: string } | null {
+  if (turn.source === 'remote') {
+    if (turn.model === MOCK_MODEL_ID) {
+      return { kind: 'mock' };
+    }
+    return { kind: 'live', label: turn.model ? 'Live · ' + turn.model : 'Live' };
+  }
+  if (turn.source === 'stub') {
+    return { kind: 'scripted' };
+  }
+  return null;
+}
+
 const S02StageScreen: React.FC<Props> = ({
   blueprint,
   stage,
@@ -225,6 +244,14 @@ const S02StageScreen: React.FC<Props> = ({
               ))}
             </ul>
           </div>
+          {chipFor(turnForStage) && (
+            <p style={styles.sourceLabel}>
+              <Chip
+                kind={(chipFor(turnForStage) as { kind: 'scripted' | 'mock' | 'live' }).kind}
+                label={(chipFor(turnForStage) as { label?: string }).label}
+              />
+            </p>
+          )}
           {sourceLabel(turnForStage) && (
             <p style={styles.sourceLabel}>{sourceLabel(turnForStage)}</p>
           )}

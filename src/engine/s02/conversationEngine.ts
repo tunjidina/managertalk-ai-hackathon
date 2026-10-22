@@ -4,11 +4,12 @@
 //
 // TWO ADAPTERS, ONE INTERFACE.
 //
-//   StubConversationEngine   — default. Composes Tomás's turn from strings
-//                              already in the blueprint. No network, no key,
-//                              no invented copy. The app ships and every
-//                              screen, the stage machine and the validators
-//                              are exercisable today.
+//   ScriptedConversationEngine — default. Answers with Tomás's authored,
+//                              approved lines (./scriptedDialogue), chosen by
+//                              rule. No network, no key, no generated text.
+//                              Every reply is labelled "Scripted". The app
+//                              ships and every screen, the stage machine and
+//                              the validators are exercisable without a model.
 //
 //   RemoteConversationEngine — posts to a server endpoint that holds the
 //                              API key. It is NOT configured with a key
@@ -21,7 +22,7 @@
 //
 // When an endpoint is configured, createConversationEngine() wraps the
 // remote adapter in FallbackConversationEngine: a remote failure (timeout,
-// outage, auth rejection, malformed reply) falls back to the stub, and the
+// outage, auth rejection, malformed reply) falls back to the scripted engine, and the
 // response says so through `source` and `fallbackReason`.
 //
 // Nothing here throws. Every call returns a discriminated result, matching
@@ -45,9 +46,9 @@ import {
 import { getFirebaseAuth, isFirebaseConfigured } from '../../lib/firebase';
 import {
   EMPLOYEE_RESPONSE_STYLES,
-  EmployeeResponseStyle,
-  chooseStyle
+  EmployeeResponseStyle
 } from './styleSelection';
+import { selectScriptedReply } from './scriptedDialogue';
 
 // -----------------------------
 // Types
@@ -195,68 +196,20 @@ export function detectStageViolations(
 }
 
 // -----------------------------
-// Stub adapter
+// Scripted adapter
 // -----------------------------
 
-/** Index of the branching constraint matching a style, in the authored list. */
-function branchingLineFor(
-  blueprint: ScenarioBlueprint,
-  style: EmployeeResponseStyle
-): string {
-  const lines = blueprint.implementation_notes.branching_constraints;
-  const needles: Record<EmployeeResponseStyle, string> = {
-    technical_detail: 'technical detail',
-    evidence_challenge: 'evidence challenge',
-    procedural_compliance: 'procedural compliance',
-    composed_disagreement: 'composed disagreement'
-  };
-
-  const needle = needles[style];
-  for (let i = 0; i < lines.length; i += 1) {
-    if (lines[i].toLowerCase().indexOf(needle) !== -1) {
-      return lines[i];
-    }
-  }
-  return lines.length > 0 ? lines[0] : '';
-}
-
-/** Behaviour-model lines that characterise the chosen style. */
-function behaviourLinesFor(
-  blueprint: ScenarioBlueprint,
-  style: EmployeeResponseStyle
-): string[] {
-  const model = blueprint.implementation_notes.behaviour_model_employee;
-  const needles: Record<EmployeeResponseStyle, string[]> = {
-    technical_detail: ['detail and framing correction'],
-    evidence_challenge: ['scrutinises specific examples', 'challenge to competence'],
-    procedural_compliance: ['procedurally impeccable', 'still making commitments'],
-    composed_disagreement: ['composed, precise, and unconvinced', 'written channels']
-  };
-
-  const wanted = needles[style];
-  const picked: string[] = [];
-
-  for (let i = 0; i < model.length; i += 1) {
-    for (let j = 0; j < wanted.length; j += 1) {
-      if (
-        model[i].toLowerCase().indexOf(wanted[j]) !== -1 &&
-        picked.indexOf(model[i]) === -1
-      ) {
-        picked.push(model[i]);
-      }
-    }
-  }
-
-  return picked.length > 0 ? picked : model.slice(0, 1);
-}
-
 /**
- * The default engine. It produces Tomás's turn as the authored behaviour
- * lines for the selected branch — no generated prose, so rule 10 ("no UI
- * text invention") holds without a model in the loop. Swap for
- * RemoteConversationEngine once an endpoint exists.
+ * The default engine, and the fallback for every remote failure. It answers
+ * with Tomás's authored lines (./scriptedDialogue), chosen by rule: no model,
+ * no network and no generated text. Selection is deterministic for a given
+ * session: variants alternate with the turns already taken in the stage, and
+ * a Considering reply is restrained first and fuller later.
+ *
+ * Its responses carry source 'stub', so the screen labels every reply
+ * "Scripted reply" (see sourceLabel), never as AI-generated.
  */
-export class StubConversationEngine implements ConversationEngine {
+export class ScriptedConversationEngine implements ConversationEngine {
   readonly kind = 'stub' as const;
 
   async respond(request: EngineRequest): Promise<EngineResult<EngineResponse>> {
@@ -270,22 +223,20 @@ export class StubConversationEngine implements ConversationEngine {
       };
     }
 
-    const style = chooseStyle(stage, managerInput);
-
-    const lines: string[] = [];
-    const branching = branchingLineFor(blueprint, style);
-    if (branching) {
-      lines.push(branching);
-    }
-    lines.push.apply(lines, behaviourLinesFor(blueprint, style));
-    lines.push.apply(lines, stageDefinition(blueprint, stage).ambiguity_to_preserve);
+    const violations = detectStageViolations(blueprint, stage, managerInput);
+    const selection = selectScriptedReply({
+      stage,
+      managerInput,
+      priorTurns: request.priorTurns,
+      violated: violations.length > 0
+    });
 
     return {
       ok: true,
       data: {
-        style,
-        lines,
-        constraintViolations: detectStageViolations(blueprint, stage, managerInput),
+        style: selection.style,
+        lines: selection.reply.lines.slice(),
+        constraintViolations: violations,
         source: 'stub'
       }
     };
@@ -786,9 +737,9 @@ export function createConversationEngine(
   if (endpoint && isAllowedEndpoint(endpoint, policy)) {
     return new FallbackConversationEngine(
       new RemoteConversationEngine({ endpoint, getIdToken: currentFirebaseIdToken }),
-      new StubConversationEngine()
+      new ScriptedConversationEngine()
     );
   }
 
-  return new StubConversationEngine();
+  return new ScriptedConversationEngine();
 }
