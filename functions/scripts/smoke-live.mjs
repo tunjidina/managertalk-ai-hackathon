@@ -19,11 +19,25 @@
 // the run before any completion).
 // The key is read only from NEBIUS_API_KEY and is redacted from all output.
 
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+// The compiled core is loaded by URL, not by file path. A dynamic import()
+// takes a URL or a relative specifier, and a Windows absolute path such as
+// C:\\repo\\functions\\lib\\smokeCore.js is read as a URL whose scheme is "c:",
+// which fails with ERR_UNSUPPORTED_ESM_URL_SCHEME. Resolving against
+// import.meta.url yields a file: URL on every platform, and also handles
+// spaces and non-ASCII characters in the path.
+const coreUrl = new URL('../lib/smokeCore.js', import.meta.url).href;
 
-const here = dirname(fileURLToPath(import.meta.url));
-const { runSmoke, HARD_MAX_CALLS } = await import(join(here, '..', 'lib', 'smokeCore.js'));
+let core;
+try {
+  core = await import(coreUrl);
+} catch (error) {
+  if (error && error.code === 'ERR_MODULE_NOT_FOUND') {
+    console.error('The build output is missing or incomplete: run "npm run build" in functions/ first.');
+    process.exit(1);
+  }
+  throw error;
+}
+const { runSmoke, HARD_MAX_CALLS } = core;
 
 const args = process.argv.slice(2);
 const live = args.includes('--live');
