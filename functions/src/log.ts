@@ -21,11 +21,22 @@ export type TurnOutcome =
   | 'manager_input_invalid'
   | 'prior_turns_invalid'
   | 'model_error'
-  | 'invalid_model_reply';
+  | 'invalid_model_reply'
+  | 'limiter_error'
+  | 'quota_user'
+  | 'quota_global'
+  | 'model_timeout'
+  | 'model_rate_limited'
+  | 'model_unavailable'
+  | 'model_auth_error'
+  | 'model_malformed'
+  | 'model_empty'
+  | 'reply_rejected';
 
 export interface TurnLogEntry {
   route: '/api/s02/turn';
-  mode: 'mock';
+  /** 'live' only when a real model client answered or was attempted. */
+  mode: 'mock' | 'live';
   status: number;
   outcome: TurnOutcome;
   latencyMs: number;

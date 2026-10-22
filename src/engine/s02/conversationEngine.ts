@@ -34,7 +34,6 @@ import {
 } from '../../types/scenarioBlueprint';
 import {
   CAUSALITY_MARKERS,
-  FORMAL_PROCESS_MARKERS,
   NAMED_SOURCE_MARKERS,
   OUTAGE_MARKERS,
   PERSONALITY_MARKERS,
@@ -44,17 +43,19 @@ import {
   wordCount
 } from './textSignals';
 import { getFirebaseAuth, isFirebaseConfigured } from '../../lib/firebase';
+import {
+  EMPLOYEE_RESPONSE_STYLES,
+  EmployeeResponseStyle,
+  chooseStyle
+} from './styleSelection';
 
 // -----------------------------
 // Types
 // -----------------------------
 
-/** The four response styles named in implementation_notes.branching_constraints. */
-export type EmployeeResponseStyle =
-  | 'technical_detail'
-  | 'evidence_challenge'
-  | 'procedural_compliance'
-  | 'composed_disagreement';
+// The style type and chooser live in ./styleSelection so the server can share
+// them. Re-exported here so existing imports keep working.
+export type { EmployeeResponseStyle } from './styleSelection';
 
 export interface EngineTurn {
   stage: S02InputStage;
@@ -97,6 +98,8 @@ export type EngineErrorCode =
   | 'invalid-response'
   | 'unauthenticated'
   | 'rate-limited'
+  | 'daily-limit-user'
+  | 'daily-limit-global'
   | 'timeout'
   | 'unknown';
 
@@ -195,22 +198,6 @@ export function detectStageViolations(
 // Stub adapter
 // -----------------------------
 
-function chooseStyle(
-  stage: S02InputStage,
-  managerInput: string
-): EmployeeResponseStyle {
-  if (containsAny(managerInput, OUTAGE_MARKERS) || containsAny(managerInput, NAMED_SOURCE_MARKERS)) {
-    return 'evidence_challenge';
-  }
-  if (containsAny(managerInput, CAUSALITY_MARKERS) || containsAny(managerInput, FORMAL_PROCESS_MARKERS)) {
-    return 'composed_disagreement';
-  }
-  if (stage === 'commitments' || stage === 'closing') {
-    return 'procedural_compliance';
-  }
-  return 'technical_detail';
-}
-
 /** Index of the branching constraint matching a style, in the authored list. */
 function branchingLineFor(
   blueprint: ScenarioBlueprint,
@@ -308,14 +295,6 @@ export class StubConversationEngine implements ConversationEngine {
 // -----------------------------
 // Remote adapter
 // -----------------------------
-
-/** Every style the endpoint may return; anything else is rejected. */
-const EMPLOYEE_RESPONSE_STYLES: EmployeeResponseStyle[] = [
-  'technical_detail',
-  'evidence_challenge',
-  'procedural_compliance',
-  'composed_disagreement'
-];
 
 export const DEFAULT_REMOTE_TIMEOUT_MS = 20000;
 
@@ -538,11 +517,38 @@ export function parseRemoteReply(body: unknown): RemoteReply | null {
   return { style, lines, model };
 }
 
-function statusError(status: number): { code: EngineErrorCode; message: string } {
+/**
+ * The header the function sets on a 429 that is its own daily cap
+ * (functions/src/handler.ts, LIMIT_HEADER). Absent on a provider 429.
+ */
+const LIMIT_HEADER = 'x-managertalk-limit';
+
+function readLimitHeader(response: Response): string | null {
+  return response.headers && typeof response.headers.get === 'function'
+    ? response.headers.get(LIMIT_HEADER)
+    : null;
+}
+
+function statusError(
+  status: number,
+  limit: string | null = null
+): { code: EngineErrorCode; message: string } {
   if (status === 401 || status === 403) {
     return {
       code: 'unauthenticated',
       message: 'The conversation service did not accept your sign-in.'
+    };
+  }
+  if (status === 429 && limit === 'daily-user') {
+    return {
+      code: 'daily-limit-user',
+      message: 'You have reached today\'s limit for the AI conversation partner.'
+    };
+  }
+  if (status === 429 && limit === 'daily-global') {
+    return {
+      code: 'daily-limit-global',
+      message: 'The AI conversation partner has reached its limit for today.'
     };
   }
   if (status === 429) {
@@ -646,7 +652,7 @@ export class RemoteConversationEngine implements ConversationEngine {
       }
 
       if (!response.ok) {
-        const failure = statusError(response.status);
+        const failure = statusError(response.status, readLimitHeader(response));
         return { ok: false, code: failure.code, message: failure.message };
       }
 

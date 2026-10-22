@@ -56,10 +56,11 @@ function request(overrides: Partial<EngineRequest> = {}): EngineRequest {
   };
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
     json: () => Promise.resolve(body)
   } as unknown as Response;
 }
@@ -651,5 +652,120 @@ describe('sourceLabel', () => {
       expect(backend).toContain("MOCK_MODEL_ID = '" + MOCK_MODEL_ID + "'");
       expect(backend).toContain("MOCK_MARKER = '[" + MOCK_LABEL + "]'");
     });
+  });
+});
+
+// Every status the live function can return (functions/src/handler.ts), traced
+// through the client engine, the stub fallback and the label the learner sees.
+describe('live function failures, end to end on the client', () => {
+  const LIVE_MODEL = 'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B';
+  const UNAVAILABLE = 'Scripted reply · the AI conversation partner is unavailable';
+
+  async function labelFor(respond: () => Promise<Response>): Promise<string | null> {
+    fetchMock.mockImplementation(respond);
+    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const data = dataOf(await engine.respond(request()));
+    return sourceLabel({
+      stage: 'sbi',
+      managerInput: 'Input',
+      employeeLines: data.lines,
+      style: data.style,
+      source: data.source,
+      model: data.model,
+      fallbackReason: data.fallbackReason
+    });
+  }
+
+  test('a validated live reply is labelled with its model and nothing else', async () => {
+    const label = await labelFor(() =>
+      Promise.resolve(jsonResponse(200, { style: 'composed_disagreement', lines: ['I see it differently.'], model: LIVE_MODEL }))
+    );
+    expect(label).toBe('AI-generated reply · ' + LIVE_MODEL);
+  });
+
+  test.each([
+    [400, UNAVAILABLE],
+    [429, 'Scripted reply · the AI conversation partner is busy right now'],
+    [401, "Scripted reply · we couldn't confirm your sign-in for the AI conversation partner"],
+    [403, "Scripted reply · we couldn't confirm your sign-in for the AI conversation partner"],
+    [500, UNAVAILABLE],
+    [502, UNAVAILABLE],
+    [503, UNAVAILABLE],
+    [504, UNAVAILABLE]
+  ])('status %i falls back to the scripted reply and says so', async (status, expected) => {
+    expect(await labelFor(() => Promise.resolve(jsonResponse(status, { error: { code: 'x', message: 'y' } })))).toBe(expected);
+  });
+
+  test('a 200 whose body is not a usable reply is never shown as AI-generated', async () => {
+    for (const body of [null, {}, { lines: [] }, { lines: ['x'.repeat(601)], style: 'technical_detail' }, { lines: 'text' }, { style: 'friendly', lines: ['Hi.'] }]) {
+      const label = await labelFor(() => Promise.resolve(jsonResponse(200, body)));
+      expect(label).toBe(UNAVAILABLE);
+    }
+  });
+
+  test('a network failure falls back to the scripted reply', async () => {
+    expect(await labelFor(() => Promise.reject(new TypeError('Failed to fetch')))).toBe(UNAVAILABLE);
+  });
+
+  test('the mock backend is still labelled as a mock, never as AI', async () => {
+    const label = await labelFor(() =>
+      Promise.resolve(jsonResponse(200, { style: 'technical_detail', lines: ['[Mock reply — no AI model was called] x'], model: MOCK_MODEL_ID }))
+    );
+    expect(label).toBe('Mock reply — no AI model was called');
+  });
+});
+
+describe('daily-limit responses, end to end on the client', () => {
+  const USER_LABEL =
+    "Scripted reply · you've reached today's limit for the AI conversation partner, so practice continues with scripted replies";
+  const GLOBAL_LABEL =
+    'Scripted reply · the AI conversation partner has reached its limit for today, so practice continues with scripted replies';
+
+  async function outcome(headers: Record<string, string>) {
+    fetchMock.mockResolvedValue(jsonResponse(429, { error: { code: 'daily_limit' } }, headers));
+    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    const data = dataOf(await engine.respond(request()));
+    return {
+      data,
+      label: sourceLabel({
+        stage: 'sbi',
+        managerInput: 'Input',
+        employeeLines: data.lines,
+        style: data.style,
+        source: data.source,
+        model: data.model,
+        fallbackReason: data.fallbackReason
+      })
+    };
+  }
+
+  test('the per-user cap is named as the learner\'s own daily limit and scripted practice continues', async () => {
+    const result = await outcome({ 'x-managertalk-limit': 'daily-user' });
+    expect(result.data.source).toBe('stub');
+    expect(result.data.fallbackReason).toBe('daily-limit-user');
+    expect(result.label).toBe(USER_LABEL);
+  });
+
+  test('the global cap is named as the service\'s daily limit', async () => {
+    const result = await outcome({ 'x-managertalk-limit': 'daily-global' });
+    expect(result.data.fallbackReason).toBe('daily-limit-global');
+    expect(result.label).toBe(GLOBAL_LABEL);
+  });
+
+  test('a 429 without the header is still just "busy"', async () => {
+    const result = await outcome({});
+    expect(result.data.fallbackReason).toBe('rate-limited');
+    expect(result.label).toBe('Scripted reply · the AI conversation partner is busy right now');
+  });
+
+  test('an unknown header value is not treated as a daily limit', async () => {
+    const result = await outcome({ 'x-managertalk-limit': 'something-else' });
+    expect(result.data.fallbackReason).toBe('rate-limited');
+  });
+
+  test('a response object with no headers at all does not break the engine', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429, json: () => Promise.resolve({}) } as unknown as Response);
+    const engine = new FallbackConversationEngine(remote(), new StubConversationEngine());
+    expect(dataOf(await engine.respond(request())).fallbackReason).toBe('rate-limited');
   });
 });

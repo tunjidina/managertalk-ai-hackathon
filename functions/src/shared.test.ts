@@ -14,6 +14,8 @@ const repoRoot = join(functionsDir, '..');
 const SHARED_FILES: Array<[string, string]> = [
   ['src/types/scenarioBlueprint.ts', 'types/scenarioBlueprint.ts'],
   ['src/engine/s02/prompts.ts', 'engine/s02/prompts.ts'],
+  ['src/engine/s02/textSignals.ts', 'engine/s02/textSignals.ts'],
+  ['src/engine/s02/styleSelection.ts', 'engine/s02/styleSelection.ts'],
   ['src/data/scenarios/mt-s02.json', 'data/scenarios/mt-s02.json']
 ];
 
@@ -29,4 +31,15 @@ test('the shared prompt builder imports nothing but the blueprint types', () => 
   const source = readFileSync(join(repoRoot, 'src/engine/s02/prompts.ts'), 'utf8');
   const imports = source.match(/from\s+'[^']+'/g) || [];
   assert.deepEqual(imports, ["from '../../types/scenarioBlueprint'"]);
+});
+
+test('the shared style helpers import only the blueprint types and each other', () => {
+  const textSignals = readFileSync(join(repoRoot, 'src/engine/s02/textSignals.ts'), 'utf8');
+  assert.deepEqual(textSignals.match(/^import\s.*$/gm) || [], []);
+
+  const styleSelection = readFileSync(join(repoRoot, 'src/engine/s02/styleSelection.ts'), 'utf8');
+  assert.deepEqual(styleSelection.match(/from\s+'[^']+'/g) || [], [
+    "from '../../types/scenarioBlueprint'",
+    "from './textSignals'"
+  ]);
 });

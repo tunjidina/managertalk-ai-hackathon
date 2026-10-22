@@ -19,6 +19,8 @@ const repoRoot = join(functionsDir, '..');
 const SHARED_FILES = [
   ['src/types/scenarioBlueprint.ts', 'types/scenarioBlueprint.ts'],
   ['src/engine/s02/prompts.ts', 'engine/s02/prompts.ts'],
+  ['src/engine/s02/textSignals.ts', 'engine/s02/textSignals.ts'],
+  ['src/engine/s02/styleSelection.ts', 'engine/s02/styleSelection.ts'],
   ['src/data/scenarios/mt-s02.json', 'data/scenarios/mt-s02.json']
 ];
 

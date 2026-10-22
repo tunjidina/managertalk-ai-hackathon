@@ -55,6 +55,10 @@ export function sourceLabel(turn: EngineTurn): string | null {
         return "Scripted reply · we couldn't confirm your sign-in for the AI conversation partner";
       case 'rate-limited':
         return 'Scripted reply · the AI conversation partner is busy right now';
+      case 'daily-limit-user':
+        return "Scripted reply · you've reached today's limit for the AI conversation partner, so practice continues with scripted replies";
+      case 'daily-limit-global':
+        return 'Scripted reply · the AI conversation partner has reached its limit for today, so practice continues with scripted replies';
       default:
         return 'Scripted reply · the AI conversation partner is unavailable';
     }

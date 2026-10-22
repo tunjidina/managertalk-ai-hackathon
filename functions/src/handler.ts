@@ -11,6 +11,9 @@
 //   413 size         raw body over MAX_BODY_BYTES, before any parsing
 //   401 auth         Bearer Firebase ID token, verified on every request
 //   400 body         JSON with exactly the allowed fields and limits
+//   429 daily limit   a daily cap (live mode only), named in the X-ManagerTalk-Limit header
+//   429 busy          the model provider's own rate limit (no such header)
+//   502/504 upstream  the live model failed, timed out or returned an unusable reply
 //   200 reply        the model client's reply, re-checked before returning
 //   500 internal     anything unexpected
 //
@@ -18,12 +21,22 @@
 // token failed. The client ignores error bodies and reads only the status.
 
 import { VerifyIdToken, parseBearerToken } from './auth';
+import { MAX_MODEL_ID_CHARS_FOR_REPLY } from './limits';
 import { TurnLogger, TurnOutcome } from './log';
 import { EMPLOYEE_RESPONSE_STYLES, ModelClient, ModelReply } from './mockModel';
+import { ModelFailure, ModelFailureCode } from './nebiusModel';
 import { buildTrustedPrompt } from './prompts';
+import { DailyLimiter } from './rateLimit';
 import { MAX_EMPLOYEE_LINES, MAX_EMPLOYEE_LINE_CHARS, validateTurnRequest } from './validate';
 
 export const ROUTE = '/api/s02/turn' as const;
+
+/**
+ * Set on a 429 that comes from this service's own daily cap, so the client
+ * can say so accurately instead of calling it "busy". Value: daily-user or
+ * daily-global. A 429 relayed from the model provider never carries it.
+ */
+export const LIMIT_HEADER = 'X-ManagerTalk-Limit';
 
 /**
  * 256 KiB. The client's worst case is about 58,000 UTF-16 characters, up to
@@ -31,8 +44,6 @@ export const ROUTE = '/api/s02/turn' as const;
  * every legitimate request fits.
  */
 export const MAX_BODY_BYTES = 256 * 1024;
-
-const MAX_MODEL_ID_CHARS = 120;
 
 export interface TurnHttpRequest {
   method: string;
@@ -48,6 +59,9 @@ export type ErrorCode =
   | 'payload_too_large'
   | 'unauthenticated'
   | 'invalid_request'
+  | 'rate_limited'
+  | 'daily_limit'
+  | 'upstream_unavailable'
   | 'internal';
 
 export interface ErrorBody {
@@ -66,6 +80,10 @@ export interface TurnDeps {
   verifyIdToken: VerifyIdToken;
   model: ModelClient;
   log: TurnLogger;
+  /** Which kind of model client `model` is; recorded in the log. Defaults to 'mock'. */
+  mode?: 'mock' | 'live';
+  /** Daily caps, checked before the model is called. Only the live path sets one. */
+  limiter?: DailyLimiter;
   now?: () => number;
 }
 
@@ -81,6 +99,9 @@ const MESSAGES: Record<ErrorCode, string> = {
   payload_too_large: 'The request is too large.',
   unauthenticated: 'Sign in again to continue.',
   invalid_request: 'The request was not valid.',
+  rate_limited: 'The conversation service is busy. Please wait a moment.',
+  daily_limit: 'The daily limit for the conversation partner has been reached.',
+  upstream_unavailable: 'The conversation partner is unavailable right now.',
   internal: 'Something went wrong. Please try again.'
 };
 
@@ -96,7 +117,7 @@ function isAcceptableReply(reply: ModelReply | null | undefined): reply is Model
     (EMPLOYEE_RESPONSE_STYLES as readonly string[]).indexOf(reply.style) !== -1 &&
     typeof reply.model === 'string' &&
     reply.model.length > 0 &&
-    reply.model.length <= MAX_MODEL_ID_CHARS &&
+    reply.model.length <= MAX_MODEL_ID_CHARS_FOR_REPLY &&
     Array.isArray(reply.lines) &&
     reply.lines.length > 0 &&
     reply.lines.length <= MAX_EMPLOYEE_LINES &&
@@ -108,6 +129,24 @@ function isAcceptableReply(reply: ModelReply | null | undefined): reply is Model
     )
   );
 }
+
+interface FailureMapping {
+  status: number;
+  code: ErrorCode;
+  outcome: TurnOutcome;
+}
+
+const MODEL_FAILURES: Record<ModelFailureCode, FailureMapping> = {
+  timeout: { status: 504, code: 'upstream_unavailable', outcome: 'model_timeout' },
+  rate_limited: { status: 429, code: 'rate_limited', outcome: 'model_rate_limited' },
+  unavailable: { status: 502, code: 'upstream_unavailable', outcome: 'model_unavailable' },
+  upstream_auth: { status: 502, code: 'upstream_unavailable', outcome: 'model_auth_error' },
+  malformed: { status: 502, code: 'upstream_unavailable', outcome: 'model_malformed' },
+  empty: { status: 502, code: 'upstream_unavailable', outcome: 'model_empty' },
+  truncated: { status: 502, code: 'upstream_unavailable', outcome: 'reply_rejected' },
+  rejected_reply: { status: 502, code: 'upstream_unavailable', outcome: 'reply_rejected' },
+  prompt_too_large: { status: 502, code: 'upstream_unavailable', outcome: 'model_unavailable' }
+};
 
 export async function handleTurn(
   request: TurnHttpRequest,
@@ -122,7 +161,7 @@ export async function handleTurn(
     body: SuccessBody | ErrorBody,
     extraHeaders: Record<string, string> = {}
   ): TurnHttpResponse => {
-    deps.log({ route: ROUTE, mode: 'mock', status, outcome, latencyMs: now() - started });
+    deps.log({ route: ROUTE, mode: deps.mode || 'mock', status, outcome, latencyMs: now() - started });
     return { status, headers: { ...BASE_HEADERS, ...extraHeaders }, body };
   };
 
@@ -158,8 +197,9 @@ export async function handleTurn(
       return fail(401, 'unauthenticated', 'missing_token');
     }
 
+    let uid: string;
     try {
-      await deps.verifyIdToken(token);
+      uid = (await deps.verifyIdToken(token)).uid;
     } catch (error) {
       return fail(401, 'unauthenticated', 'invalid_token');
     }
@@ -178,10 +218,36 @@ export async function handleTurn(
 
     const prompt = buildTrustedPrompt(validation.value);
 
+    // Charged only after the request is known to be valid, and before any
+    // model call. A limiter that cannot answer fails closed: an unmetered
+    // live call is the one thing this guard exists to prevent.
+    if (deps.limiter) {
+      let decision;
+      try {
+        decision = await deps.limiter.consume(uid);
+      } catch (error) {
+        return fail(503, 'upstream_unavailable', 'limiter_error');
+      }
+      if (!decision.allowed) {
+        const global = decision.scope === 'global';
+        return fail(429, 'daily_limit', global ? 'quota_global' : 'quota_user', {
+          [LIMIT_HEADER]: global ? 'daily-global' : 'daily-user'
+        });
+      }
+    }
+
     let reply: ModelReply;
     try {
       reply = await deps.model(prompt);
     } catch (error) {
+      if (error instanceof ModelFailure) {
+        const mapping = MODEL_FAILURES[error.code];
+        const headers: Record<string, string> =
+          error.retryAfterSeconds !== undefined
+            ? { 'Retry-After': String(error.retryAfterSeconds) }
+            : {};
+        return fail(mapping.status, mapping.code, mapping.outcome, headers);
+      }
       return fail(500, 'internal', 'model_error');
     }
 
