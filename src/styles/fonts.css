@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Self-hosted fonts (all SIL Open Font License 1.1; notice in
+   public/third-party-font-licenses.txt).
+   --------------------------------------------------------------------------
+   Only the Latin subset is shipped, which covers "Tomás" and the rest of the
+   scenario copy. Only woff2 is referenced, so the build does not also emit
+   the larger legacy woff files that the packages' own stylesheets pull in.
+   font-display: swap keeps text visible while a face loads.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('~@fontsource/inter/files/inter-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('~@fontsource/inter/files/inter-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('~@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('~@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('~@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2')
+    format('woff2');
+}

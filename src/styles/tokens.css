@@ -1,0 +1,109 @@
+/* ==========================================================================
+   ManagerTalk design tokens  ("The Open Door")
+   --------------------------------------------------------------------------
+   Single source of truth for colour, type, spacing, radius and motion.
+   src/styles/contrast.test.ts reads this file and asserts the WCAG contrast
+   of every text/background pair below, so a token edit that breaks a pair
+   fails the test run.
+
+   Colour roles
+     you   teal       the manager
+     tomas clay       the employee
+     coach pencil     feedback and margin notes
+     amber            progress and primary action only; never a score
+   Meaning is never carried by colour alone: every voice also has a name
+   label and an icon.
+   ========================================================================== */
+
+:root {
+  /* Surfaces */
+  --mt-paper: #F6F0E6;
+  --mt-card: #FCF9F3;
+  --mt-sunk: #EDE5D8;
+
+  /* Text */
+  --mt-ink: #1F2430;
+  --mt-ink-2: #4B505D;
+
+  /* Lines. --mt-hairline is decorative only (1.5:1); anything that
+     identifies a control, such as an input border, uses --mt-border-strong. */
+  --mt-hairline: #CFC3B0;
+  --mt-border-strong: #857A67;
+
+  /* Voices */
+  --mt-you: #1E5C58;
+  --mt-tomas: #A24A2D;
+  --mt-coach: #2C4A9E;
+
+  /* Threshold light */
+  --mt-amber: #E9A83A;
+  --mt-amber-hover: #F0B857;
+  --mt-amber-ink: #7A4E00;
+  --mt-highlight: #F4DC9A;
+
+  /* Interaction */
+  --mt-focus: #1D4ED8;
+
+  /* Type families (self-hosted, see fonts.css) */
+  --mt-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --mt-font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  --mt-font-script: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+
+  /* Type scale */
+  --mt-text-xs: 13px;
+  --mt-text-sm: 15px;
+  --mt-text-md: 17px;
+  --mt-text-lg: 20px;
+  --mt-text-xl: 28px;
+  --mt-text-2xl: 40px;
+  --mt-text-3xl: 56px;
+  --mt-leading-body: 1.6;
+  --mt-measure: 64ch;
+
+  /* Spacing: 4px base */
+  --mt-space-1: 4px;
+  --mt-space-2: 8px;
+  --mt-space-3: 12px;
+  --mt-space-4: 16px;
+  --mt-space-5: 24px;
+  --mt-space-6: 32px;
+  --mt-space-7: 48px;
+  --mt-space-8: 72px;
+
+  /* Radius */
+  --mt-radius-sm: 6px;
+  --mt-radius-md: 12px;
+  --mt-radius-lg: 20px;
+
+  /* Touch target */
+  --mt-target: 44px;
+
+  /* Motion. Four motions are specified: message arrive, portrait crossfade,
+     doorway widen, pencil underline draw. */
+  --mt-dur-message: 180ms;
+  --mt-dur-crossfade: 240ms;
+  --mt-dur-doorway: 400ms;
+  --mt-dur-pencil: 300ms;
+  --mt-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Fluid display sizes above phone width. */
+@media (min-width: 720px) {
+  :root {
+    --mt-text-xl: clamp(28px, 2.4vw, 32px);
+    --mt-text-2xl: clamp(40px, 4vw, 48px);
+    --mt-text-3xl: clamp(56px, 6vw, 72px);
+  }
+}
+
+/* Reduced motion: every duration collapses to zero, so components that use
+   the duration tokens switch state instantly with no further code. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mt-dur-message: 0ms;
+    --mt-dur-crossfade: 0ms;
+    --mt-dur-doorway: 0ms;
+    --mt-dur-pencil: 0ms;
+  }
+}

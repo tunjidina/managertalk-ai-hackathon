@@ -1,0 +1,48 @@
+.button {
+  min-height: var(--mt-target);
+  padding: var(--mt-space-3) var(--mt-space-5);
+  font-family: var(--mt-font-ui);
+  font-size: var(--mt-text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1.5px solid transparent;
+  border-radius: var(--mt-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--mt-dur-message) var(--mt-ease);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: var(--mt-amber);
+  color: var(--mt-ink);
+  box-shadow: 0 1px 0 rgba(31, 36, 48, 0.35);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--mt-amber-hover);
+}
+
+.secondary {
+  background: var(--mt-card);
+  color: var(--mt-ink);
+  border-color: var(--mt-border-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--mt-sunk);
+}
+
+.quiet {
+  background: transparent;
+  color: var(--mt-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.quiet:hover:not(:disabled) {
+  background: var(--mt-sunk);
+}

@@ -1,0 +1,28 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mt-space-1);
+  padding: 2px var(--mt-space-3);
+  font-family: var(--mt-font-ui);
+  font-size: var(--mt-text-xs);
+  font-weight: 600;
+  line-height: 1.6;
+  border-radius: 999px;
+  border: 1.5px solid var(--mt-ink-2);
+  color: var(--mt-ink-2);
+  background: transparent;
+}
+
+.scripted {
+  border-style: solid;
+}
+
+.mock {
+  border-style: dashed;
+}
+
+.live {
+  border-color: var(--mt-you);
+  background: var(--mt-you);
+  color: #fff;
+}

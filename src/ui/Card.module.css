@@ -1,0 +1,26 @@
+.card {
+  padding: var(--mt-space-5);
+  border: 1px solid var(--mt-hairline);
+  border-radius: var(--mt-radius-md);
+  color: var(--mt-ink);
+}
+
+.raised {
+  background: var(--mt-card);
+}
+
+.sunk {
+  background: var(--mt-sunk);
+}
+
+.you {
+  border-left: 4px solid var(--mt-you);
+}
+
+.tomas {
+  border-left: 4px solid var(--mt-tomas);
+}
+
+.coach {
+  border-left: 4px solid var(--mt-coach);
+}
