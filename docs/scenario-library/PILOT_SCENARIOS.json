@@ -1,0 +1,779 @@
+{
+  "schema_version": "0.1",
+  "library_status": "pilot",
+  "note": "Pilot briefs only. Every item is needs_research. No source is verified. Not runnable content: see SCHEMA.md compatibility section.",
+  "scenarios": [
+    {
+      "id": "MT-L001",
+      "title": "The Third Missed Deadline",
+      "category": "performance",
+      "core_tension": "The manager must address a repeated missed deadline without assuming the cause is effort when scope or support may be involved.",
+      "difficulty": 1,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A team member has missed three consecutive delivery dates. The manager has not yet asked what changed.",
+      "context": {
+        "setting": "Mid-size software consultancy, hybrid",
+        "manager_role": "Team lead",
+        "employee_role": "Analyst",
+        "employee_name": "Ravi",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Quiet on status updates until after the date passes.",
+      "manager_objective": "Agree a realistic plan and an early-warning routine.",
+      "manager_own_contribution": "Targets were set in a planning session the employee did not attend.",
+      "evidence_state": "partial",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Project tracker",
+          "observed": "Three due dates passed in eight weeks.",
+          "not_proven": "Why the dates were missed."
+        },
+        {
+          "id": "E2",
+          "source": "Planning notes",
+          "observed": "Dates were agreed without the employee present.",
+          "not_proven": "Whether the dates were realistic."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Agreed early-warning routine",
+        "Scope renegotiated",
+        "Capability gap surfaced"
+      ],
+      "scoring_notes": "Criteria: names observed dates, asks about causes, agrees specific next steps, acknowledges own planning role.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Describing observed dates, asking open questions, agreeing steps.",
+        "must_escalate": [],
+        "must_not_do": [
+          "promise outcomes",
+          "speculate about causes not in evidence"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What does evidence say about behaviour-based versus trait-based feedback on later performance?",
+          "What does UK guidance recommend for informal performance conversations before any formal process?",
+          "What is known about how unclear expectations contribute to missed deadlines?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Situation-Behaviour-Impact",
+            "status": "unverified_candidate"
+          },
+          {
+            "name": "Informal performance discussion guidance",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L002",
+      "title": "The Same Disagreement Again",
+      "category": "conflict_team",
+      "core_tension": "The manager must address a recurring public disagreement between two colleagues without taking a side or silencing legitimate task disagreement.",
+      "difficulty": 2,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "Two senior team members repeatedly disagree in team meetings about priorities. Others have stopped contributing.",
+      "context": {
+        "setting": "Product team, remote-first",
+        "manager_role": "Head of product",
+        "employee_role": "Senior designer",
+        "employee_name": "Mei",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Challenges a peer's proposals directly and at length in group settings.",
+      "manager_objective": "Separate the legitimate disagreement from the manner, and agree how disagreements are raised.",
+      "manager_own_contribution": "The team has no agreed way to settle priority conflicts.",
+      "evidence_state": "partial",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Meeting notes",
+          "observed": "Disagreement on priorities in four of five meetings.",
+          "not_proven": "Intent of either party."
+        },
+        {
+          "id": "E2",
+          "source": "Retro survey",
+          "observed": "Two members report holding back.",
+          "not_proven": "Cause of holding back."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Agreed norms for disagreement",
+        "Conversation continues but views differ",
+        "Mediation suggested"
+      ],
+      "scoring_notes": "Criteria: separates task from manner, avoids taking sides, names the impact on others, proposes a process change.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Naming impact, separating issues, proposing a process.",
+        "must_escalate": [],
+        "must_not_do": [
+          "promise outcomes",
+          "speculate about causes not in evidence"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What does evidence say about task conflict versus relationship conflict in teams?",
+          "What do published conflict-handling or mediation frameworks recommend for recurring public disagreement?",
+          "What does psychological-safety research support and not support about manager responses to dissent?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Task versus relationship conflict",
+            "status": "unverified_candidate"
+          },
+          {
+            "name": "Psychological safety",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L003",
+      "title": "When Is My Promotion?",
+      "category": "coaching_career",
+      "core_tension": "The manager must be honest about uncertain promotion timing without creating false hope or discouraging a strong performer.",
+      "difficulty": 2,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A high performer asks for a promotion date. The manager does not control the decision or its timing.",
+      "context": {
+        "setting": "Financial services technology team",
+        "manager_role": "Engineering manager",
+        "employee_role": "Engineer",
+        "employee_name": "Kemi",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Direct and hopeful; has begun comparing themselves with peers.",
+      "manager_objective": "Be clear on what is known, unknown and in the manager's control, and agree development steps.",
+      "manager_own_contribution": "The manager once implied the review would happen this year.",
+      "evidence_state": "clear",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Performance reviews",
+          "observed": "Two consecutive strong ratings.",
+          "not_proven": "That promotion is warranted or scheduled."
+        },
+        {
+          "id": "E2",
+          "source": "HR cycle calendar",
+          "observed": "Promotion round dates not yet confirmed.",
+          "not_proven": "Whether the employee will be considered."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Shared understanding of criteria and timing",
+        "Employee disappointed but informed",
+        "Development plan agreed"
+      ],
+      "scoring_notes": "Criteria: does not promise outcomes, states unknowns, owns the earlier implication, agrees concrete development steps.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Clarifying criteria, naming unknowns, agreeing development steps.",
+        "must_escalate": [],
+        "must_not_do": [
+          "promise promotion or timing",
+          "imply a decision already made"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What does evidence say about vague promotion timelines and trust or retention?",
+          "What UK guidance exists on fairness in promotion and progression decisions?",
+          "What does research on developmental feedback support, and in what settings?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Developmental coaching conversations",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L004",
+      "title": "Gone Quiet After the Restructure",
+      "category": "motivation_recognition",
+      "core_tension": "The manager must understand a change in engagement after a restructure without presuming burnout, disloyalty or a particular cause.",
+      "difficulty": 2,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A previously active team member has become withdrawn since the team was reorganised.",
+      "context": {
+        "setting": "Retail operations head office",
+        "manager_role": "Operations manager",
+        "employee_role": "Planner",
+        "employee_name": "Tariq",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Fewer contributions in meetings, camera off, shorter replies.",
+      "manager_objective": "Invite the employee's view of the change and agree what support or clarity would help.",
+      "manager_own_contribution": "Changes were announced by email with little discussion.",
+      "evidence_state": "partial",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Meeting attendance and chat logs",
+          "observed": "Contributions dropped after the reorganisation.",
+          "not_proven": "Why contributions dropped."
+        },
+        {
+          "id": "E2",
+          "source": "1:1 notes",
+          "observed": "Two 1:1s shortened by the employee.",
+          "not_proven": "Employee's feelings about the change."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Employee shares concern",
+        "Employee says nothing is wrong, door left open",
+        "Workload or role clarity issue found"
+      ],
+      "scoring_notes": "Criteria: states observations, asks open questions, avoids diagnosing, acknowledges how the change was communicated.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Describing observations, inviting views, offering support options.",
+        "must_escalate": [
+          "Signs of serious distress: signpost to wellbeing and HR routes"
+        ],
+        "must_not_do": [
+          "diagnose a condition",
+          "assume the restructure is the cause"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What is known about disengagement after restructuring and how it differs from burnout?",
+          "What does self-determination research say about managerial support after disruption?",
+          "What does evidence say about how employees interpret limited communication during change?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Self-determination theory",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L005",
+      "title": "The Manager Who Keeps Everything",
+      "category": "delegation",
+      "core_tension": "The manager must recognise that their own over-retention of work is holding the team back, and discuss it with a team member who wants more responsibility.",
+      "difficulty": 3,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A capable team member says they are under-used. The manager has been taking the interesting work.",
+      "context": {
+        "setting": "Marketing agency",
+        "manager_role": "Account director",
+        "employee_role": "Account executive",
+        "employee_name": "Sofia",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Polite but disengaging; asks for more varied work.",
+      "manager_objective": "Reframe the conversation around delegating a real piece of work with clear decision rights.",
+      "manager_own_contribution": "The manager has retained high-visibility tasks.",
+      "evidence_state": "clear",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Work allocation sheet",
+          "observed": "Last six major tasks all held by the manager.",
+          "not_proven": "The manager's reasons."
+        },
+        {
+          "id": "E2",
+          "source": "1:1 notes",
+          "observed": "Employee asked for stretch work twice.",
+          "not_proven": "What stretch work would suit them."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "A delegated task with clear authority",
+        "Manager reflects but resists",
+        "Gradual handover plan"
+      ],
+      "scoring_notes": "Criteria: acknowledges own pattern, sets clear decision rights, agrees support and check-ins.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Reflecting on own pattern, setting decision rights.",
+        "must_escalate": [],
+        "must_not_do": [
+          "promise outcomes",
+          "speculate about causes not in evidence"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What does evidence say about managers over-retaining work and effects on team development?",
+          "What delegation frameworks exist and what is their evidential basis versus practitioner origin?",
+          "What does research on autonomy and monitoring say about trust after delegation?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Delegation levels frameworks",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L006",
+      "title": "Is My Job Safe?",
+      "category": "change",
+      "core_tension": "The manager must respond honestly to job-security anxiety during a reorganisation when they cannot disclose or do not know the outcome.",
+      "difficulty": 3,
+      "sensitivity_tier": "B",
+      "status": "brief",
+      "summary": "During a reorganisation under consultation, an employee asks directly whether their job is safe.",
+      "context": {
+        "setting": "Regional logistics firm",
+        "manager_role": "Depot manager",
+        "employee_role": "Dispatcher",
+        "employee_name": "Arjun",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Anxious, asks repeated direct questions, seeks reassurance.",
+      "manager_objective": "Be truthful about what is known, avoid false reassurance, and point to the formal process and support.",
+      "manager_own_contribution": null,
+      "evidence_state": "unknown",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Consultation timetable",
+          "observed": "Consultation open until a stated date.",
+          "not_proven": "Who is affected or the outcome."
+        },
+        {
+          "id": "E2",
+          "source": "Manager brief",
+          "observed": "Manager told not to discuss selection criteria.",
+          "not_proven": "What the criteria are."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Employee informed of process and support",
+        "Employee remains anxious but not misled"
+      ],
+      "scoring_notes": "Criteria: does not speculate or reassure falsely, explains process and support routes, listens.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Explaining process, listening, naming what is unknown.",
+        "must_escalate": [
+          "Any individual selection or legal question goes to HR"
+        ],
+        "must_not_do": [
+          "predict selection outcomes",
+          "disclose confidential consultation details",
+          "promise job security"
+        ],
+        "review_required": [
+          "hr_professional",
+          "employment_law"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What do ACAS or CIPD materials say about communicating during redundancy consultation, and what must a manager avoid saying?",
+          "What does research on job insecurity say about effects and manager behaviours studied?",
+          "What is known about how people interpret ambiguous communication in restructuring?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Redundancy consultation guidance",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L007",
+      "title": "Messages at Midnight",
+      "category": "workload_wellbeing",
+      "core_tension": "The manager must address out-of-hours working that the team reads as an expectation, including their own role in setting it.",
+      "difficulty": 2,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A team member routinely replies to messages late at night, and others are following suit.",
+      "context": {
+        "setting": "E-commerce company",
+        "manager_role": "Customer operations manager",
+        "employee_role": "Senior agent",
+        "employee_name": "Lena",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Replies in the evening and at weekends; says it is a personal choice.",
+      "manager_objective": "Clarify expectations, agree boundaries, and own any signal the manager has sent.",
+      "manager_own_contribution": "The manager sends evening messages and has praised fast replies.",
+      "evidence_state": "clear",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Message timestamps",
+          "observed": "Frequent replies after 22:00.",
+          "not_proven": "Whether this harms wellbeing."
+        },
+        {
+          "id": "E2",
+          "source": "Manager's own messages",
+          "observed": "Several late evening messages sent by the manager.",
+          "not_proven": "Employee's perception of them."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Shared expectation on response times",
+        "Employee keeps own pattern by choice",
+        "Team norm agreed"
+      ],
+      "scoring_notes": "Criteria: acknowledges own signals, distinguishes choice from expectation, agrees explicit norms.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Clarifying expectations and norms.",
+        "must_escalate": [],
+        "must_not_do": [
+          "give legal advice",
+          "promise outcomes"
+        ],
+        "review_required": [
+          "hr_professional",
+          "employment_law"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What do HSE management standards and ACAS guidance say about workload, working hours and manager responsibilities?",
+          "What does evidence say about out-of-hours working expectations and wellbeing?",
+          "Which Working Time Regulations provisions are relevant and need legal review?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "HSE management standards",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L008",
+      "title": "A Different Way to Run Meetings",
+      "category": "fairness_inclusion",
+      "core_tension": "The manager must respond to an informal request to change meeting formats without asking about or assuming a health condition.",
+      "difficulty": 2,
+      "sensitivity_tier": "B",
+      "status": "brief",
+      "summary": "An employee asks if meetings can include a written agenda and pauses for response, without giving a reason.",
+      "context": {
+        "setting": "Public-sector analytics team",
+        "manager_role": "Team leader",
+        "employee_role": "Data analyst",
+        "employee_name": "Noor",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Concise, reserved; has not given a reason for the request.",
+      "manager_objective": "Respond constructively, agree a trial of the format, and know when to involve HR for a formal adjustment.",
+      "manager_own_contribution": null,
+      "evidence_state": "unknown",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Employee's request",
+          "observed": "A request for written agendas and pauses.",
+          "not_proven": "The reason for the request."
+        },
+        {
+          "id": "E2",
+          "source": "Team meeting practice",
+          "observed": "Agendas currently shared verbally.",
+          "not_proven": "That others would object."
+        }
+      ],
+      "stage_model": "proposed-listen-and-route",
+      "likely_outcomes": [
+        "Format trial agreed",
+        "Employee discloses more voluntarily",
+        "Formal adjustment process offered"
+      ],
+      "scoring_notes": "Criteria: no probing for a diagnosis, positive response, offers formal route, confidentiality respected.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Responding constructively, trialling the format, offering the formal route.",
+        "must_escalate": [
+          "Any formal adjustment request or disclosure of a condition goes to HR/occupational health"
+        ],
+        "must_not_do": [
+          "ask for a diagnosis",
+          "share information without consent",
+          "decide legal entitlement"
+        ],
+        "review_required": [
+          "hr_professional",
+          "accessibility_specialist",
+          "employment_law"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What do ACAS and the Equality and Human Rights Commission say about reasonable adjustments and informal requests?",
+          "What guidance states what a manager must not do when an employee raises a need, such as asking for a diagnosis or sharing information without consent?",
+          "What does evidence say about manager responses to disclosure?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Reasonable adjustments guidance",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L009",
+      "title": "The Numbers Don't Look Right",
+      "category": "ethics_escalation",
+      "core_tension": "The manager must listen to a concern about adjusted figures and route it responsibly without investigating, promising confidentiality they cannot keep, or dismissing it.",
+      "difficulty": 3,
+      "sensitivity_tier": "C",
+      "status": "brief",
+      "summary": "An employee quietly tells the manager they were asked to adjust figures in a report and they are uncomfortable.",
+      "context": {
+        "setting": "Regional insurance broker",
+        "manager_role": "Finance manager",
+        "employee_role": "Reporting analyst",
+        "employee_name": "Callum",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Hesitant, worried about consequences, asks that it stay between them.",
+      "manager_objective": "Listen, thank them, explain the escalation route, avoid investigating or promising secrecy, protect against retaliation.",
+      "manager_own_contribution": null,
+      "evidence_state": "unknown",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Employee's account",
+          "observed": "A request to adjust figures was made.",
+          "not_proven": "That any wrongdoing occurred."
+        },
+        {
+          "id": "E2",
+          "source": "Company policy",
+          "observed": "A raising-concerns policy exists.",
+          "not_proven": "How it is applied here."
+        }
+      ],
+      "stage_model": "proposed-listen-and-escalate",
+      "likely_outcomes": [
+        "Concern escalated per policy",
+        "Employee reassured about process, not outcome"
+      ],
+      "scoring_notes": "Criteria: listens, does not investigate, does not promise confidentiality, explains escalation, names retaliation protections.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Listening and explaining the route only.",
+        "must_escalate": [
+          "The concern itself must be passed to the designated route (HR, compliance or whistleblowing contact)"
+        ],
+        "must_not_do": [
+          "investigate the claim",
+          "promise confidentiality",
+          "tell the employee the claim is true or false"
+        ],
+        "review_required": [
+          "hr_professional",
+          "employment_law",
+          "compliance"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What do UK whistleblowing and public-interest-disclosure sources say about how a manager must respond to a concern?",
+          "What does evidence say about retaliation risks and the effect of manager responses on whether concerns are raised?",
+          "Which duties are statutory and which are organisational policy?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Raising concerns policy guidance",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    },
+    {
+      "id": "MT-L010",
+      "title": "Left Out of the Decision",
+      "category": "cross_functional_remote",
+      "core_tension": "The manager must address a remote team member's exclusion from decisions made in office conversations without blaming individuals.",
+      "difficulty": 2,
+      "sensitivity_tier": "A",
+      "status": "brief",
+      "summary": "A remote team member learns about decisions after they are made in the office. They raise it calmly.",
+      "context": {
+        "setting": "Hybrid professional-services firm, offices in two time zones",
+        "manager_role": "Delivery manager",
+        "employee_role": "Consultant",
+        "employee_name": "Elena",
+        "region": "UK"
+      },
+      "employee_behaviour_pattern": "Calm, factual, says it keeps happening.",
+      "manager_objective": "Acknowledge the pattern, own the structure that causes it, and agree specific process changes.",
+      "manager_own_contribution": "Quick office decisions are the team's habit and the manager has not challenged them.",
+      "evidence_state": "clear",
+      "evidence_pack_outline": [
+        {
+          "id": "E1",
+          "source": "Decision log",
+          "observed": "Four of six recent decisions were made in office-only conversations.",
+          "not_proven": "Anyone's intent."
+        },
+        {
+          "id": "E2",
+          "source": "Employee's account",
+          "observed": "Learned of decisions afterwards.",
+          "not_proven": "Impact on delivery."
+        }
+      ],
+      "stage_model": "mt-s02-five-stage",
+      "likely_outcomes": [
+        "Decision-logging rule agreed",
+        "Employee appreciates acknowledgement but wants evidence of change"
+      ],
+      "scoring_notes": "Criteria: acknowledges the pattern, avoids blame, agrees specific, checkable process changes.",
+      "boundaries": {
+        "practice_not_advice": true,
+        "learner_may_practise": "Acknowledging the pattern, agreeing process changes.",
+        "must_escalate": [],
+        "must_not_do": [
+          "promise outcomes",
+          "speculate about causes not in evidence"
+        ],
+        "review_required": [
+          "hr_professional"
+        ]
+      },
+      "research": {
+        "status": "needs_research",
+        "research_questions": [
+          "What does evidence say about inclusion and information access in hybrid teams across locations?",
+          "What does research on remote meeting practices support and not support?",
+          "What guidance exists for managers on equitable participation in distributed teams?"
+        ],
+        "candidate_frameworks": [
+          {
+            "name": "Hybrid inclusion practices",
+            "status": "unverified_candidate"
+          }
+        ],
+        "sources": [],
+        "verification_log": []
+      },
+      "review": {
+        "owner_review": "pending",
+        "peer_review": "pending",
+        "last_reviewed": null
+      }
+    }
+  ]
+}
