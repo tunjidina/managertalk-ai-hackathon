@@ -224,54 +224,59 @@ decisions remained developer-controlled.
 
 ## Prerequisites
 
-Before running ManagerTalk locally, make sure you have:
-
-* Node.js installed
-* npm installed
-* A Firebase project
-* Firebase Authentication configured
-* Firestore configured
+* Node.js 22 (the Cloud Functions in `functions/` target Node 22) and npm
+* For the full local flow with sign-in and the conversation endpoint: the Firebase CLI, to run the Auth, Functions and Hosting emulators (ports 9099, 5001 and 5000, from `firebase.json`)
+* For a hosted build: your own Firebase project with Authentication and Firestore. No project, deployed URL or key is included in this repository.
 
 ---
 
 ## Installation
 
-Clone the repository and install the dependencies:
-
 ```bash
 npm install
+npm --prefix functions install
 ```
 
 ---
 
 ## Environment Configuration
 
-Create a `.env` file in the project root.
+`.env.example` lists every variable with placeholders only, and says which file each block belongs in:
 
-Add your Firebase configuration:
+* Local emulator development: copy the emulator block to `.env.development.local` (gitignored). The Firebase project ID must start with `demo-`, so it cannot be a real cloud project.
+* Real Firebase project: put your own six `REACT_APP_FIREBASE_*` values in `.env.local` (gitignored).
+* `REACT_APP_REVENUECAT_WEB_BILLING_KEY` is left empty for the hackathon demo, which disables RevenueCat.
+* `REACT_APP_DEMO_MODE=true` opens MT-S02 without a purchase. It is ignored if a RevenueCat key is set.
 
-```env
-REACT_APP_FIREBASE_API_KEY=...
-REACT_APP_FIREBASE_AUTH_DOMAIN=...
-REACT_APP_FIREBASE_PROJECT_ID=...
-REACT_APP_FIREBASE_STORAGE_BUCKET=...
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=...
-REACT_APP_FIREBASE_APP_ID=...
-```
+Every `REACT_APP_*` value is inlined into the public JavaScript bundle, so never put a secret in one. The Nebius API key is never a client variable (see below).
 
-> Do not commit your `.env` file or other sensitive configuration to source control.
+> Do not commit `.env` files or other sensitive configuration to source control.
 
 ---
 
 ## Run the Application
 
-Start the development server:
-
 ```bash
 npm start
 ```
 
-The application will start in development mode.
+This serves the client in development mode. The `proxy` setting forwards `/api/s02/turn` to the Hosting emulator on `127.0.0.1:5000`, so start the Firebase emulators in a second terminal for the conversation endpoint. Without an endpoint the app uses the built-in scripted replies.
+
+---
+
+## Reply modes: scripted, mock and live
+
+Every Tomás reply in MT-S02 is labelled with where it came from:
+
+| Label | Meaning |
+|---|---|
+| `Scripted` / `Scripted reply · <reason>` | Authored, owner-approved text chosen by rules in the browser. No server and no model involved. The reason names the fallback cause, if any (timeout, sign-in unconfirmed, busy, unavailable, daily limit). |
+| `Mock · no AI model called` | The server endpoint answered from its mock model. No AI model was called. |
+| `Live` chip and `AI-generated reply · <model id>` | Shown only when the server returned a validated reply from a live model. |
+
+Live mode is off by default. The function uses the mock unless `S02_ENGINE_MODE` is exactly `live` and a `NEBIUS_API_KEY` Secret Manager secret is bound to it. Any failure falls back to scripted replies. See `docs/DEPLOYMENT.md` for the settings, the daily limits and the smoke test.
+
+**Current status:** no request to Nebius Token Factory has been made from this repository, and nothing is deployed. The live path is implemented and tested against fake network responses only. See `docs/VERIFICATION.md` for what has and has not been verified, and `docs/GATE_A_READINESS.md` for the open model and eligibility questions.
 
 ---
 
@@ -435,7 +440,9 @@ The project demonstrates:
 | `npm install`      | Install dependencies         |
 | `npm start`        | Start development server     |
 | `npx tsc --noEmit` | Run TypeScript type checking |
+| `npm test`         | Run client tests (watch mode; add `-- --watchAll=false` for one run) |
 | `npm run build`    | Create production build      |
+| `npm --prefix functions test` | Build and test the Cloud Functions |
 
 ---
 
