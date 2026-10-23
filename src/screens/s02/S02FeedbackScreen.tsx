@@ -1,9 +1,23 @@
 import React from 'react';
 
-import { styles } from './S02StageScreen';
+import { styles as stageStyles } from './S02StageScreen';
+
 import { S02BlueprintMissing, useS02Blueprint } from './S02BlueprintGuard';
-import { useS02SessionState } from '../../store/s02SessionState';
+import { currentRunInput, useS02SessionState } from '../../store/s02SessionState';
+import { buildEvidence } from '../../engine/s02/evidence';
 import { useNavigationState } from '../../store/navigationState';
+
+const styles: Record<string, React.CSSProperties> = {
+  ...stageStyles,
+  quote: {
+    margin: '8px 0 0 0',
+    padding: '8px 12px',
+    borderLeft: '3px solid #2C4A9E',
+    backgroundColor: '#fff',
+    color: '#1F2430',
+    fontStyle: 'italic'
+  }
+};
 
 /**
  * Stage 7 — Feedback.
@@ -20,7 +34,12 @@ const S02FeedbackScreen: React.FC = () => {
   const blueprint = useS02Blueprint();
   const score = useS02SessionState((state) => state.score);
   const feedback = useS02SessionState((state) => state.feedback);
+  const session = useS02SessionState((state) => state);
   const resetSession = useS02SessionState((state) => state.resetSession);
+  const evidence = React.useMemo(
+    () => (score ? buildEvidence(currentRunInput(session), score.signals) : null),
+    [score, session]
+  );
   const setCurrentScreen = useNavigationState((state) => state.setCurrentScreen);
 
   if (!blueprint) {
@@ -44,9 +63,49 @@ const S02FeedbackScreen: React.FC = () => {
 
       <div style={styles.divider} />
 
+      {evidence && (
+        <section style={styles.section} aria-labelledby="evidence-heading">
+          <h2 id="evidence-heading" style={styles.sectionLabel}>
+            What you actually wrote
+          </h2>
+          <div style={styles.card}>
+            <p style={styles.hint}>
+              Observed: your own words and entries, and what the rules did not recognise. This section does not
+              interpret intent.
+            </p>
+            <ul style={styles.list}>
+              {evidence.items.map((item) => (
+                <li key={item.id} style={styles.listItem}>
+                  <strong>
+                    {item.role === 'strength' ? 'Strength' : item.role === 'concern' ? 'Concern' : 'Not recognised'}
+                    {': '}
+                  </strong>
+                  {item.observation}
+                  {item.quote !== undefined && (
+                    <blockquote style={styles.quote}>
+                      “{item.quote}
+                      {item.truncated ? '…' : ''}”
+                    </blockquote>
+                  )}
+                  {item.value !== undefined && <div style={styles.hint}>Entered: {item.value}</div>}
+                </li>
+              ))}
+            </ul>
+            {evidence.limits.map((limit) => (
+              <p key={limit} style={styles.hint}>
+                {limit}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+
       {score && feedback && (
         <section style={styles.section}>
-          <h2 style={styles.sectionLabel}>{score.tier}</h2>
+          <h2 style={styles.sectionLabel}>Coaching interpretation · {score.tier}</h2>
+          <p style={styles.hint}>
+            Authored guidance for this scenario. It is not measured from your words and does not read your intent.
+          </p>
           <div style={styles.responseCard}>
             <ul style={styles.list}>
               {feedback.focus.map((item, index) => (
