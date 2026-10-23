@@ -3,13 +3,14 @@ import React, { useMemo, useState } from 'react';
 import {
   S02InputStage,
   ScenarioBlueprint,
-  stageDefinition,
   stageScreenText
 } from '../../types/scenarioBlueprint';
+import { nextStage } from '../../engine/s02/stageMachine';
 import { useS02SessionState } from '../../store/s02SessionState';
 import { Chip } from '../../ui';
 import {
   EngineTurn,
+  MAX_MANAGER_INPUT_CHARS,
   MOCK_MODEL_ID,
   createConversationEngine
 } from '../../engine/s02/conversationEngine';
@@ -87,6 +88,22 @@ export function chipFor(turn: EngineTurn): { kind: 'scripted' | 'mock' | 'live';
   return null;
 }
 
+/** The five conversation stages in order, with the short names shown to the learner. */
+export const JOURNEY: Array<{ stage: S02InputStage; label: string }> = [
+  { stage: 'sbi', label: 'Name the behaviour' },
+  { stage: 'exploration', label: 'Ask for his account' },
+  { stage: 'hypotheses', label: 'Hold explanations open' },
+  { stage: 'commitments', label: 'Agree commitments' },
+  { stage: 'closing', label: 'Close with a date' }
+];
+
+/** What the Continue button leads to, in words the learner sees. */
+export function continueLabel(stage: S02InputStage): string {
+  const next = nextStage(stage);
+  const entry = JOURNEY.filter((item) => item.stage === next)[0];
+  return entry ? 'Continue: ' + entry.label : 'Continue to your score';
+}
+
 const S02StageScreen: React.FC<Props> = ({
   blueprint,
   stage,
@@ -95,7 +112,7 @@ const S02StageScreen: React.FC<Props> = ({
   onBeforeAdvance
 }) => {
   const text = stageScreenText(blueprint, stage);
-  const definition = stageDefinition(blueprint, stage);
+  const position = JOURNEY.map((item) => item.stage).indexOf(stage);
 
   const value = useS02SessionState((state) => state.inputs[stage]);
   const setInput = useS02SessionState((state) => state.setInput);
@@ -166,6 +183,26 @@ const S02StageScreen: React.FC<Props> = ({
         <p style={styles.subtitle}>{text.purpose}</p>
       </header>
 
+      <nav aria-label="Conversation progress" style={styles.progress}>
+        <ol style={styles.progressList}>
+          {JOURNEY.map((item, index) => (
+            <li
+              key={item.stage}
+              style={index === position ? { ...styles.progressItem, ...styles.progressCurrent } : styles.progressItem}
+              aria-current={index === position ? 'step' : undefined}
+            >
+              <span style={styles.progressNumber}>{index + 1}</span> {item.label}
+            </li>
+          ))}
+        </ol>
+        <p style={styles.progressText}>
+          Step {position + 1} of {JOURNEY.length}.{' '}
+          {turnForStage
+            ? 'Read Tomás\'s reply, then use the Continue button when you are ready.'
+            : 'Write your message below, then press Send. You can change it and send again.'}
+        </p>
+      </nav>
+
       <div style={styles.divider} />
 
       <section style={styles.section}>
@@ -173,19 +210,6 @@ const S02StageScreen: React.FC<Props> = ({
         <div style={styles.card}>
           <ul style={styles.list}>
             {text.manager_guidance.map((item, index) => (
-              <li key={index} style={styles.listItem}>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section style={styles.section}>
-        <h2 style={styles.sectionLabel}>Ambiguity To Preserve</h2>
-        <div style={styles.cardNeutral}>
-          <ul style={styles.list}>
-            {definition.ambiguity_to_preserve.map((item, index) => (
               <li key={index} style={styles.listItem}>
                 {item}
               </li>
@@ -212,6 +236,7 @@ const S02StageScreen: React.FC<Props> = ({
         <section style={styles.section}>
           <div style={styles.errorBox} role="alert">
             <p style={styles.errorText}>{lastError}</p>
+            <p style={styles.errorText}>Your message is kept. Press Send to try again.</p>
           </div>
         </section>
       )}
@@ -226,37 +251,51 @@ const S02StageScreen: React.FC<Props> = ({
             style={styles.textarea}
             value={value}
             onChange={(event) => setInput(stage, event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                handleSubmit();
+              }
+            }}
             disabled={busy}
+            maxLength={MAX_MANAGER_INPUT_CHARS}
             aria-label={text.input_prompt}
+            aria-describedby={'composer-hint-' + stage}
           />
         </div>
+        <p id={'composer-hint-' + stage} style={styles.hint}>
+          {value.length} of {MAX_MANAGER_INPUT_CHARS} characters. Press Ctrl+Enter (or Cmd+Enter) to send.
+        </p>
       </section>
 
-      {turnForStage && (
-        <section style={styles.section}>
-          <h2 style={styles.sectionLabel}>{blueprint.primary_competency}</h2>
-          <div style={styles.responseCard}>
-            <ul style={styles.list}>
-              {turnForStage.employeeLines.map((line, index) => (
-                <li key={index} style={styles.listItem}>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {chipFor(turnForStage) && (
-            <p style={styles.sourceLabel}>
-              <Chip
-                kind={(chipFor(turnForStage) as { kind: 'scripted' | 'mock' | 'live' }).kind}
-                label={(chipFor(turnForStage) as { label?: string }).label}
-              />
-            </p>
-          )}
-          {sourceLabel(turnForStage) && (
-            <p style={styles.sourceLabel}>{sourceLabel(turnForStage)}</p>
-          )}
-        </section>
-      )}
+      <div role="status" aria-live="polite">
+        {busy && <p style={styles.hint}>Reply arriving…</p>}
+        {turnForStage && !busy && (
+          <section style={styles.section} aria-label="Tomás's reply">
+            <h2 style={styles.sectionLabel}>Tomás's reply</h2>
+            <div style={styles.responseCard}>
+              <ul style={styles.list}>
+                {turnForStage.employeeLines.map((line, index) => (
+                  <li key={index} style={styles.listItem}>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {chipFor(turnForStage) && (
+              <p style={styles.sourceLabel}>
+                <Chip
+                  kind={(chipFor(turnForStage) as { kind: 'scripted' | 'mock' | 'live' }).kind}
+                  label={(chipFor(turnForStage) as { label?: string }).label}
+                />
+              </p>
+            )}
+            {sourceLabel(turnForStage) && (
+              <p style={styles.sourceLabel}>{sourceLabel(turnForStage)}</p>
+            )}
+          </section>
+        )}
+      </div>
 
       <div style={styles.ctaRow}>
         <button
@@ -264,7 +303,7 @@ const S02StageScreen: React.FC<Props> = ({
           onClick={handleSubmit}
           disabled={!hasInput || busy}
         >
-          Send
+          {busy ? 'Sending…' : turnForStage ? 'Send again' : 'Send'}
         </button>
 
         <button
@@ -276,9 +315,12 @@ const S02StageScreen: React.FC<Props> = ({
           onClick={handleAdvance}
           disabled={!submitted || !canAdvance}
         >
-          Continue
+          {continueLabel(stage)}
         </button>
       </div>
+      {submitted && !canAdvance && (
+        <p style={styles.hint}>Complete the fields above to continue.</p>
+      )}
     </div>
   );
 };
@@ -366,6 +408,44 @@ export const styles: Record<string, React.CSSProperties> = {
     fontSize: '15px',
     color: '#444',
     marginBottom: '10px'
+  },
+  progress: {
+    marginBottom: '24px'
+  },
+  progressList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    listStyle: 'none',
+    padding: 0,
+    margin: '0 0 12px 0'
+  },
+  progressItem: {
+    fontSize: '13px',
+    color: '#4B505D',
+    padding: '6px 12px',
+    border: '1px solid #CFC3B0',
+    borderRadius: '999px',
+    backgroundColor: '#fff'
+  },
+  progressCurrent: {
+    color: '#1F2430',
+    fontWeight: 700,
+    borderColor: '#1F2430',
+    backgroundColor: '#F4DC9A'
+  },
+  progressNumber: {
+    fontWeight: 700
+  },
+  progressText: {
+    fontSize: '15px',
+    color: '#4B505D',
+    margin: 0
+  },
+  hint: {
+    fontSize: '13px',
+    color: '#4B505D',
+    margin: '8px 0 0 0'
   },
   sourceLabel: {
     fontSize: '13px',
