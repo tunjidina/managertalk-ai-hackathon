@@ -13,7 +13,7 @@ import {
   MAX_MANAGER_INPUT_CHARS,
   MOCK_MODEL_ID
 } from '../../engine/s02/conversationEngine';
-import S02StageScreen, { JOURNEY, continueLabel } from './S02StageScreen';
+import S02StageScreen, { JOURNEY, MIN_MANAGER_INPUT_CHARS, continueLabel } from './S02StageScreen';
 
 // The engine module reads Firebase only to attach a sign-in token to remote
 // calls; these tests never make one.
@@ -109,6 +109,24 @@ describe('composer', () => {
     expect(hint).toHaveTextContent('0 of ' + MAX_MANAGER_INPUT_CHARS + ' characters');
     fireEvent.change(field, { target: { value: 'hello' } });
     expect(hint).toHaveTextContent('5 of ' + MAX_MANAGER_INPUT_CHARS + ' characters');
+  });
+
+  test('a very short entry is not sent and explains why', () => {
+    renderStage();
+    const field = screen.getByRole('textbox');
+    fireEvent.change(field, { target: { value: 'ok' } });
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(screen.getByText(/Write a little more, at least/)).toHaveTextContent(
+      'at least ' + MIN_MANAGER_INPUT_CHARS + ' characters'
+    );
+    fireEvent.change(field, { target: { value: MESSAGE } });
+    expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
+    expect(screen.queryByText(/Write a little more/)).not.toBeInTheDocument();
+  });
+
+  test('says that progress saves automatically', () => {
+    renderStage();
+    expect(screen.getByText(/saves automatically on this device/)).toBeInTheDocument();
   });
 
   test('Ctrl+Enter sends; plain Enter does not', async () => {

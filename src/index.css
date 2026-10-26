@@ -32,6 +32,8 @@
 
 body {
   margin: 0;
+  background-color: var(--mt-paper);
+  color: var(--mt-ink);
   font-family: var(--mt-font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

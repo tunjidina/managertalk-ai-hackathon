@@ -104,6 +104,9 @@ export function continueLabel(stage: S02InputStage): string {
   return entry ? 'Continue: ' + entry.label : 'Continue to your score';
 }
 
+/** Fewest characters (after trimming) that count as a message worth sending. */
+export const MIN_MANAGER_INPUT_CHARS = 15;
+
 const S02StageScreen: React.FC<Props> = ({
   blueprint,
   stage,
@@ -132,7 +135,9 @@ const S02StageScreen: React.FC<Props> = ({
   const turnForStage = turns.filter((turn) => turn.stage === stage).pop() || null;
 
   const busy = requestStatus === 'sending';
-  const hasInput = value.trim().length > 0;
+  const trimmedLength = value.trim().length;
+  const hasInput = trimmedLength >= MIN_MANAGER_INPUT_CHARS;
+  const tooShort = trimmedLength > 0 && !hasInput;
 
   const handleSubmit = async () => {
     if (!hasInput || busy) {
@@ -266,6 +271,13 @@ const S02StageScreen: React.FC<Props> = ({
         <p id={'composer-hint-' + stage} style={styles.hint}>
           {value.length} of {MAX_MANAGER_INPUT_CHARS} characters. Press Ctrl+Enter (or Cmd+Enter) to send.
         </p>
+        {tooShort && (
+          <p role="status" style={styles.hint}>
+            Write a little more, at least {MIN_MANAGER_INPUT_CHARS} characters, so Tomás has
+            something to respond to.
+          </p>
+        )}
+        <p style={styles.hint}>Your progress saves automatically on this device when your browser allows it.</p>
       </section>
 
       <div role="status" aria-live="polite">
@@ -336,9 +348,9 @@ export const styles: Record<string, React.CSSProperties> = {
     padding: 'var(--mt-page-padding, 40px)',
     maxWidth: 'var(--mt-page-max-width, 900px)',
     margin: '0 auto',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--mt-font-ui)',
     lineHeight: 1.6,
-    color: '#1a1a1a'
+    color: 'var(--mt-ink)'
   },
   header: {
     marginBottom: '28px'
@@ -348,10 +360,11 @@ export const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#6b7280',
+    color: 'var(--mt-ink-2)',
     margin: '0 0 10px 0'
   },
   title: {
+    fontFamily: 'var(--mt-font-display)',
     fontSize: '34px',
     fontWeight: 700,
     letterSpacing: '-0.02em',
@@ -360,13 +373,13 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: '17px',
-    color: '#444',
+    color: 'var(--mt-ink-2)',
     maxWidth: '68ch',
     margin: 0
   },
   divider: {
     height: '1px',
-    backgroundColor: '#e6e6e6',
+    backgroundColor: 'var(--mt-hairline)',
     margin: '0 0 36px 0'
   },
   section: {
@@ -377,27 +390,27 @@ export const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#6b7280',
+    color: 'var(--mt-ink-2)',
     margin: '0 0 16px 0'
   },
   card: {
     padding: '24px',
-    backgroundColor: '#fafafa',
-    border: '1px solid #e6e6e6',
+    backgroundColor: 'var(--mt-sunk)',
+    border: '1px solid var(--mt-hairline)',
     borderRadius: '12px'
   },
   cardNeutral: {
     padding: '20px 24px',
-    backgroundColor: '#fafafa',
-    border: '1px solid #e6e6e6',
+    backgroundColor: 'var(--mt-sunk)',
+    border: '1px solid var(--mt-hairline)',
     borderLeft: '3px solid #9ca3af',
     borderRadius: '10px'
   },
   responseCard: {
     padding: '20px 24px',
-    backgroundColor: '#fafafa',
-    border: '1px solid #e6e6e6',
-    borderLeft: '3px solid #0078D4',
+    backgroundColor: 'var(--mt-sunk)',
+    border: '1px solid var(--mt-hairline)',
+    borderLeft: '3px solid var(--mt-you)',
     borderRadius: '10px'
   },
   list: {
@@ -406,7 +419,7 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   listItem: {
     fontSize: '15px',
-    color: '#444',
+    color: 'var(--mt-ink-2)',
     marginBottom: '10px'
   },
   progress: {
@@ -422,34 +435,34 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   progressItem: {
     fontSize: '13px',
-    color: '#4B505D',
+    color: 'var(--mt-ink-2)',
     padding: '6px 12px',
-    border: '1px solid #CFC3B0',
+    border: '1px solid var(--mt-hairline)',
     borderRadius: '999px',
-    backgroundColor: '#fff'
+    backgroundColor: 'var(--mt-card)'
   },
   progressCurrent: {
-    color: '#1F2430',
+    color: 'var(--mt-ink)',
     fontWeight: 700,
-    borderColor: '#1F2430',
-    backgroundColor: '#F4DC9A'
+    borderColor: 'var(--mt-ink)',
+    backgroundColor: 'var(--mt-highlight)'
   },
   progressNumber: {
     fontWeight: 700
   },
   progressText: {
     fontSize: '15px',
-    color: '#4B505D',
+    color: 'var(--mt-ink-2)',
     margin: 0
   },
   hint: {
     fontSize: '13px',
-    color: '#4B505D',
+    color: 'var(--mt-ink-2)',
     margin: '8px 0 0 0'
   },
   sourceLabel: {
     fontSize: '13px',
-    color: '#6b7280',
+    color: 'var(--mt-ink-2)',
     margin: '10px 0 0 0'
   },
   violationBox: {
@@ -478,13 +491,13 @@ export const styles: Record<string, React.CSSProperties> = {
   composerSection: {
     marginTop: '8px',
     paddingTop: '28px',
-    borderTop: '1px solid #e6e6e6',
+    borderTop: '1px solid var(--mt-hairline)',
     marginBottom: '32px'
   },
   composer: {
-    border: '1px solid #dcdcdc',
+    border: '1px solid var(--mt-hairline)',
     borderRadius: '12px',
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--mt-card)',
     padding: '8px'
   },
   textarea: {
@@ -495,8 +508,8 @@ export const styles: Record<string, React.CSSProperties> = {
     resize: 'vertical',
     fontSize: '16px',
     lineHeight: 1.6,
-    fontFamily: 'Inter, sans-serif',
-    color: '#1a1a1a',
+    fontFamily: 'var(--mt-font-ui)',
+    color: 'var(--mt-ink)',
     backgroundColor: 'transparent',
     boxSizing: 'border-box'
   },
@@ -510,8 +523,8 @@ export const styles: Record<string, React.CSSProperties> = {
     flex: '1 1 260px',
     minWidth: '240px',
     padding: '20px',
-    backgroundColor: '#fafafa',
-    border: '1px solid #e6e6e6',
+    backgroundColor: 'var(--mt-sunk)',
+    border: '1px solid var(--mt-hairline)',
     borderRadius: '12px',
     boxSizing: 'border-box'
   },
@@ -527,24 +540,24 @@ export const styles: Record<string, React.CSSProperties> = {
     display: 'block',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#374151',
+    color: 'var(--mt-ink-2)',
     marginBottom: '6px'
   },
   input: {
     width: '100%',
     padding: '11px 12px',
     borderRadius: '8px',
-    border: '1px solid #d4d4d4',
-    backgroundColor: '#fff',
+    border: '1px solid var(--mt-border-strong)',
+    backgroundColor: 'var(--mt-card)',
     fontSize: '15px',
-    fontFamily: 'Inter, sans-serif',
-    color: '#1a1a1a',
+    fontFamily: 'var(--mt-font-ui)',
+    color: 'var(--mt-ink)',
     boxSizing: 'border-box'
   },
   ctaRow: {
     marginTop: '12px',
     paddingTop: '28px',
-    borderTop: '1px solid #e6e6e6',
+    borderTop: '1px solid var(--mt-hairline)',
     display: 'flex',
     flexWrap: 'wrap',
     gap: '12px',
@@ -554,9 +567,9 @@ export const styles: Record<string, React.CSSProperties> = {
     padding: '16px 28px',
     fontSize: '17px',
     fontWeight: 600,
-    fontFamily: 'Inter, sans-serif',
-    backgroundColor: '#0078D4',
-    color: '#fff',
+    fontFamily: 'var(--mt-font-ui)',
+    backgroundColor: 'var(--mt-you)',
+    color: 'var(--mt-card)',
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer'
@@ -565,10 +578,10 @@ export const styles: Record<string, React.CSSProperties> = {
     padding: '16px 28px',
     fontSize: '16px',
     fontWeight: 600,
-    fontFamily: 'Inter, sans-serif',
-    backgroundColor: '#fff',
-    color: '#374151',
-    border: '1px solid #d4d4d4',
+    fontFamily: 'var(--mt-font-ui)',
+    backgroundColor: 'var(--mt-card)',
+    color: 'var(--mt-ink-2)',
+    border: '1px solid var(--mt-border-strong)',
     borderRadius: '8px',
     cursor: 'pointer'
   },

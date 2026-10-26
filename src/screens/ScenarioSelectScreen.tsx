@@ -176,9 +176,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 'var(--mt-page-padding, 40px)',
     maxWidth: 'var(--mt-page-max-width, 900px)',
     margin: '0 auto',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--mt-font-ui)',
     lineHeight: 1.6,
-    color: '#1a1a1a'
+    color: 'var(--mt-ink)'
   },
   header: {
     marginBottom: '28px'
@@ -188,10 +188,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#6b7280',
+    color: 'var(--mt-ink-2)',
     margin: '0 0 10px 0'
   },
   title: {
+    fontFamily: 'var(--mt-font-display)',
     fontSize: '34px',
     fontWeight: 700,
     letterSpacing: '-0.02em',
@@ -200,7 +201,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   divider: {
     height: '1px',
-    backgroundColor: '#e6e6e6',
+    backgroundColor: 'var(--mt-hairline)',
     margin: '0 0 36px 0'
   },
   actionRow: {
@@ -213,10 +214,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px 22px',
     fontSize: '15px',
     fontWeight: 600,
-    fontFamily: 'Inter, sans-serif',
-    backgroundColor: '#fff',
-    color: '#374151',
-    border: '1px solid #d4d4d4',
+    fontFamily: 'var(--mt-font-ui)',
+    backgroundColor: 'var(--mt-card)',
+    color: 'var(--mt-ink-2)',
+    border: '1px solid var(--mt-border-strong)',
     borderRadius: '8px',
     cursor: 'pointer'
   },
@@ -234,12 +235,12 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '10px',
     padding: '24px',
     textAlign: 'left',
-    backgroundColor: '#fff',
-    border: '1px solid #e6e6e6',
-    borderLeft: '3px solid #0078D4',
+    backgroundColor: 'var(--mt-card)',
+    border: '1px solid var(--mt-hairline)',
+    borderLeft: '3px solid var(--mt-you)',
     borderRadius: '12px',
     cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--mt-font-ui)',
     boxSizing: 'border-box'
   },
   cardEyebrow: {
@@ -247,33 +248,33 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: '#6b7280'
+    color: 'var(--mt-ink-2)'
   },
   cardTitle: {
     fontSize: '20px',
     fontWeight: 700,
     letterSpacing: '-0.01em',
-    color: '#1a1a1a'
+    color: 'var(--mt-ink)'
   },
   cardBadge: {
     display: 'inline-block',
     padding: '4px 12px',
     borderRadius: '999px',
-    backgroundColor: '#eef4fb',
-    color: '#0b5fa5',
+    backgroundColor: 'var(--mt-sunk)',
+    color: 'var(--mt-you)',
     fontSize: '13px',
     fontWeight: 600
   },
   cardCompetency: {
     fontSize: '15px',
-    color: '#444'
+    color: 'var(--mt-ink-2)'
   },
   cardLock: {
     display: 'inline-block',
     padding: '4px 12px',
     borderRadius: '999px',
-    backgroundColor: '#fdf3e3',
-    color: '#8a5a00',
+    backgroundColor: 'var(--mt-highlight)',
+    color: 'var(--mt-amber-ink)',
     fontSize: '13px',
     fontWeight: 600
   }
