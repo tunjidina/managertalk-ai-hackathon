@@ -5,7 +5,7 @@ import { MAX_BODY_BYTES } from '../handler';
 import { TurnLogEntry } from '../log';
 import { TEST_KEY, completion, jsonResponse, recordingFetch } from '../fetchSupport.test';
 import { validBody } from '../testSupport.test';
-import { createWorker, parseCap, WorkerEnv } from './index';
+import { createWorker, parseCap, WorkerEnv } from './app';
 import { MAX_DAILY_CAP } from './dailyLimiter';
 import { PROJECT_ID, limiterNamespace, makeKeys } from './workerSupport.test';
 
