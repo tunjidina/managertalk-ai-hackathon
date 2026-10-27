@@ -65,3 +65,6 @@ appears only for a validated reply from the endpoint.
 `--live`, `SMOKE_CONFIRM=yes-make-live-calls` and `NEBIUS_API_KEY` in your own
 environment, makes at most 20 requests, checks the model list first, and redacts
 the key from all output. It requires the Nebius host to be reachable.
+
+## Zero-cost alternative
+A Cloudflare Workers variant of the S02 endpoint (no Firebase Blaze plan) is in `docs/CLOUDFLARE_DEPLOYMENT.md`. It is implemented and unit tested only; it has not been bundled, run in a Workers runtime or deployed.

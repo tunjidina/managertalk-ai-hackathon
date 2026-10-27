@@ -1,0 +1,38 @@
+# Cloudflare Worker for the zero-cost demo: serves the built React app and
+# POST /api/s02/turn from one origin. Nothing here has been deployed or run.
+# See docs/CLOUDFLARE_DEPLOYMENT.md for the manual steps and for which facts
+# are still unverified.
+#
+# NEVER put a key in this file. Secrets are set with `wrangler secret put`.
+
+name = "managertalk-demo"
+main = "functions/src/worker/index.ts"
+# [VERIFY] a date the installed wrangler accepts; change it if wrangler complains.
+compatibility_date = "2026-10-01"
+
+[assets]
+# The production build of the client (`npm run build`). The Worker serves
+# these files; /api/* is answered by the Worker only.
+directory = "./build"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "LIMITER"
+class_name = "DailyLimiter"
+
+# SQLite-backed Durable Objects. [VERIFY] that the free plan allows them.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyLimiter"]
+
+[vars]
+# Mock until the owner has verified a live turn. Anything but exactly "live" is mock.
+S02_ENGINE_MODE = "mock"
+# The demo Firebase project's id (not the production project). Empty rejects every token.
+FIREBASE_PROJECT_ID = ""
+# NEBIUS_MODEL = "..."            # optional; defaults to the model in nebiusModel.ts
+# S02_USER_DAILY_CAP = "40"
+# S02_GLOBAL_DAILY_CAP = "300"
+
+[observability]
+enabled = false

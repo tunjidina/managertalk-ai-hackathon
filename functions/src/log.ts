@@ -31,7 +31,8 @@ export type TurnOutcome =
   | 'model_auth_error'
   | 'model_malformed'
   | 'model_empty'
-  | 'reply_rejected';
+  | 'reply_rejected'
+  | 'worker_error';
 
 export interface TurnLogEntry {
   route: '/api/s02/turn';

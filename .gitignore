@@ -45,3 +45,7 @@ android/app/release/
 .idea/
 
 MANAGERTALK_HANDOVER.md
+
+# Cloudflare Wrangler: local secrets and state
+.dev.vars
+.wrangler/

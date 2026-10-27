@@ -49,7 +49,7 @@ export interface TurnHttpRequest {
   method: string;
   contentType: string | undefined;
   authorization: string | undefined;
-  /** The exact bytes received. Anything other than a Buffer fails closed. */
+  /** The exact bytes received (a Buffer or any Uint8Array). Anything else fails closed. */
   rawBody: unknown;
 }
 
@@ -148,6 +148,15 @@ const MODEL_FAILURES: Record<ModelFailureCode, FailureMapping> = {
   prompt_too_large: { status: 502, code: 'upstream_unavailable', outcome: 'model_unavailable' }
 };
 
+/** The generic 500 for a failure outside handleTurn, in the same shape as every other error. */
+export function internalErrorResponse(): TurnHttpResponse {
+  return {
+    status: 500,
+    headers: { ...BASE_HEADERS },
+    body: { error: { code: 'internal', message: MESSAGES.internal } }
+  };
+}
+
 export async function handleTurn(
   request: TurnHttpRequest,
   deps: TurnDeps
@@ -184,11 +193,12 @@ export async function handleTurn(
 
     // Never fall back to an already-parsed body: without the raw bytes the
     // size limit cannot be enforced, so the request is refused instead.
-    if (!Buffer.isBuffer(request.rawBody)) {
+    const rawBody = request.rawBody;
+    if (!(rawBody instanceof Uint8Array)) {
       return fail(500, 'internal', 'raw_body_unavailable');
     }
 
-    if (request.rawBody.length > MAX_BODY_BYTES) {
+    if (rawBody.length > MAX_BODY_BYTES) {
       return fail(413, 'payload_too_large', 'payload_too_large');
     }
 
@@ -206,7 +216,7 @@ export async function handleTurn(
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(request.rawBody.toString('utf8'));
+      parsed = JSON.parse(new TextDecoder('utf-8', { ignoreBOM: true }).decode(rawBody));
     } catch (error) {
       return fail(400, 'invalid_request', 'invalid_json');
     }
