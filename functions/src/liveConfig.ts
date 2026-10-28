@@ -20,6 +20,9 @@ export interface LiveConfigInput {
   model: string | undefined;
   userDailyCap: number | undefined;
   globalDailyCap: number | undefined;
+  /** Optional overrides for the live client; omitted means the client's own defaults. */
+  maxTokens?: number;
+  timeoutMs?: number;
 }
 
 export interface LiveConfigIo {
@@ -62,7 +65,9 @@ export function selectEngine(input: LiveConfigInput, io: LiveConfigIo): Selected
       model: createNebiusModel({
         apiKey: input.apiKey as string,
         model: input.model || NEMOTRON_NANO_MODEL_ID,
-        fetchImpl: io.fetchImpl
+        fetchImpl: io.fetchImpl,
+        maxTokens: input.maxTokens,
+        timeoutMs: input.timeoutMs
       }),
       limiter
     };

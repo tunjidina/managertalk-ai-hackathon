@@ -5,7 +5,7 @@ import { MAX_BODY_BYTES } from '../handler';
 import { TurnLogEntry } from '../log';
 import { TEST_KEY, completion, jsonResponse, recordingFetch } from '../fetchSupport.test';
 import { validBody } from '../testSupport.test';
-import { createWorker, parseCap, WorkerEnv } from './app';
+import { createWorker, parseCap, WORKER_MAX_TOKENS, WORKER_MODEL_TIMEOUT_MS, WorkerEnv } from './app';
 import { MAX_DAILY_CAP } from './dailyLimiter';
 import { PROJECT_ID, limiterNamespace, makeKeys } from './workerSupport.test';
 
@@ -297,4 +297,66 @@ test('a logger that throws during error handling still yields the generic 500', 
     env
   );
   assert.equal(response.status, 500);
+});
+
+test('the Worker limits are 350 tokens and 14 s, below the browser\'s 20 s timeout', () => {
+  assert.equal(WORKER_MAX_TOKENS, 350);
+  assert.equal(WORKER_MODEL_TIMEOUT_MS, 14_000);
+  // src/engine/s02/conversationEngine.ts DEFAULT_REMOTE_TIMEOUT_MS is 20000; the
+  // functions package cannot import the client, so the value is repeated here.
+  assert.ok(WORKER_MODEL_TIMEOUT_MS < 20_000 - 5_000, 'leaves room for a cold key fetch (up to 5 s) and overhead');
+});
+
+test('a live Worker turn asks the provider for 350 tokens', async () => {
+  const fake = recordingFetch(() => jsonResponse(completion(REPLY)));
+  const s = await setup({ S02_ENGINE_MODE: 'live', NEBIUS_API_KEY: TEST_KEY, LIMITER: limiterNamespace() }, fake);
+  assert.equal((await s.turn(await s.keys.mint())).status, 200);
+  assert.equal(fake.calls[0].body.max_tokens, WORKER_MAX_TOKENS);
+});
+
+test('a reply that reaches the 350-token cap is refused and the turn fails over to scripted, with no AI lines', async () => {
+  for (const reply of [
+    completion(REPLY, {}, { finish_reason: 'length' }),
+    { ...completion(REPLY), usage: { prompt_tokens: 100, completion_tokens: WORKER_MAX_TOKENS } }
+  ]) {
+    const fake = recordingFetch(() => jsonResponse(reply));
+    const s = await setup({ S02_ENGINE_MODE: 'live', NEBIUS_API_KEY: TEST_KEY, LIMITER: limiterNamespace() }, fake);
+    const response = await s.turn(await s.keys.mint());
+    assert.equal(response.status, 502);
+    const body = (await response.json()) as { error?: { code: string }; lines?: string[] };
+    assert.equal(body.error?.code, 'upstream_unavailable');
+    assert.equal(body.lines, undefined);
+    assert.equal(s.logs[0].outcome, 'reply_rejected');
+  }
+});
+
+test('a hung provider is aborted at the Worker timeout and the turn returns 504', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  let called!: () => void;
+  const fetchCalled = new Promise<void>((resolve) => {
+    called = resolve;
+  });
+  const hanging = ((_input: unknown, init: RequestInit = {}) =>
+    new Promise((_resolve, reject) => {
+      called();
+      (init.signal as AbortSignal).addEventListener('abort', () => reject(new Error('aborted')));
+    })) as typeof fetch;
+  const s = await setup({ S02_ENGINE_MODE: 'live', NEBIUS_API_KEY: TEST_KEY, LIMITER: limiterNamespace() }, hanging);
+  const pending = s.turn(await s.keys.mint());
+  await fetchCalled;
+  context.mock.timers.tick(WORKER_MODEL_TIMEOUT_MS - 1);
+  let early = false;
+  pending.then(() => {
+    early = true;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(early, false);
+  context.mock.timers.tick(1);
+  assert.equal((await pending).status, 504);
+});
+
+test('mock mode makes no provider request even with the Worker limits set', async () => {
+  const s = await setup();
+  assert.equal((await s.turn(await s.keys.mint())).status, 200);
+  assert.equal(s.neverCalled.calls.length, 0);
 });

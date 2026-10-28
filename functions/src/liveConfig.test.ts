@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import { LiveConfigInput, selectEngine } from './liveConfig';
 import { MOCK_MODEL_ID } from './mockModel';
-import { NEMOTRON_NANO_MODEL_ID, NEMOTRON_SUPER_MODEL_ID } from './nebiusModel';
+import { DEFAULT_MAX_TOKENS, DEFAULT_TIMEOUT_MS, ModelFailure, NEMOTRON_NANO_MODEL_ID, NEMOTRON_SUPER_MODEL_ID } from './nebiusModel';
 import { memoryCounterStore } from './rateLimit';
-import { TEST_KEY, completion, jsonResponse, recordingFetch, samplePrompt } from './fetchSupport.test';
+import { TEST_KEY, completion, hangingFetch, jsonResponse, recordingFetch, samplePrompt } from './fetchSupport.test';
 
 function io() {
   const fake = recordingFetch(() => jsonResponse(completion('I see it differently.')));
@@ -98,4 +98,45 @@ test('the key is never stored on the selected engine object', () => {
   const t = io();
   const engine = selectEngine(LIVE, t.io);
   assert.ok(!JSON.stringify(engine).includes(TEST_KEY));
+});
+
+test('callers that omit maxTokens and timeoutMs keep the shared defaults (600 tokens, 12 s)', async () => {
+  assert.equal(DEFAULT_MAX_TOKENS, 600);
+  assert.equal(DEFAULT_TIMEOUT_MS, 12_000);
+  const t = io();
+  await selectEngine(LIVE, t.io).model(samplePrompt());
+  assert.equal(t.fake.calls[0].body.max_tokens, 600);
+});
+
+test('maxTokens is passed through to the provider request', async () => {
+  const t = io();
+  await selectEngine({ ...LIVE, maxTokens: 350 }, t.io).model(samplePrompt());
+  assert.equal(t.fake.calls[0].body.max_tokens, 350);
+});
+
+test('timeoutMs is passed through: the request aborts at that time, not at the default', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const hanging = hangingFetch();
+  const engine = selectEngine({ ...LIVE, timeoutMs: 14_000 }, { ...io().io, fetchImpl: hanging });
+  const outcome = engine.model(samplePrompt()).then(
+    () => 'replied',
+    (error: unknown) => (error instanceof ModelFailure ? error.code : 'other')
+  );
+  let settled = false;
+  outcome.then(() => {
+    settled = true;
+  });
+  context.mock.timers.tick(DEFAULT_TIMEOUT_MS + 1_000);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false, 'the 12 s default must not apply when 14 s is configured');
+  context.mock.timers.tick(14_000 - DEFAULT_TIMEOUT_MS - 1_000);
+  assert.equal(await outcome, 'timeout');
+});
+
+test('mock mode ignores the limits and makes no provider request', async () => {
+  const t = io();
+  const engine = selectEngine({ ...LIVE, mode: 'mock', maxTokens: 350, timeoutMs: 14_000 }, t.io);
+  assert.equal(engine.mode, 'mock');
+  assert.equal((await engine.model(samplePrompt())).model, MOCK_MODEL_ID);
+  assert.equal(t.fake.calls.length, 0);
 });

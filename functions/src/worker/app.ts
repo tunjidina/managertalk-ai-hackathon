@@ -31,6 +31,15 @@ import {
 
 export const TURN_PATH = '/api/s02/turn';
 
+/**
+ * Live-model limits for the Worker only; Firebase keeps the shared defaults in
+ * nebiusModel.ts. The browser gives up after 20 s, and a cold start can spend
+ * up to 5 s fetching Google's signing keys first, so the model timeout stays
+ * below 15 s.
+ */
+export const WORKER_MAX_TOKENS = 350;
+export const WORKER_MODEL_TIMEOUT_MS = 14_000;
+
 export interface WorkerEnv {
   S02_ENGINE_MODE?: string;
   NEBIUS_API_KEY?: string;
@@ -125,7 +134,9 @@ export function createWorker(options: WorkerOptions = {}) {
         apiKey: env.NEBIUS_API_KEY,
         model: env.NEBIUS_MODEL,
         userDailyCap: parseCap(env.S02_USER_DAILY_CAP),
-        globalDailyCap: parseCap(env.S02_GLOBAL_DAILY_CAP)
+        globalDailyCap: parseCap(env.S02_GLOBAL_DAILY_CAP),
+        maxTokens: WORKER_MAX_TOKENS,
+        timeoutMs: WORKER_MODEL_TIMEOUT_MS
       },
       {
         fetchImpl: options.fetchImpl || fetch,
