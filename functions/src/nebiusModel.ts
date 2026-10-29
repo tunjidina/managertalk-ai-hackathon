@@ -83,6 +83,8 @@ export interface NebiusConfig {
   maxTokens?: number;
   temperature?: number;
   topP?: number;
+  /** Sent as `chat_template_kwargs` only when supplied (e.g. { enable_thinking: false } for Nano). */
+  chatTemplateKwargs?: Record<string, unknown>;
 }
 
 function parseRetryAfter(value: string | null): number | undefined {
@@ -161,7 +163,8 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
             max_tokens: maxTokens,
             temperature,
             top_p: topP,
-            stream: false
+            stream: false,
+            ...(config.chatTemplateKwargs ? { chat_template_kwargs: config.chatTemplateKwargs } : {})
           })
         });
       } catch (error) {

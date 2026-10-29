@@ -69,6 +69,29 @@ test('the model id is configurable', async () => {
   assert.equal((await engine.model(samplePrompt())).model, NEMOTRON_SUPER_MODEL_ID);
 });
 
+test('reasoning is turned off for the default and the exact explicit Nano id', async () => {
+  for (const model of [undefined, NEMOTRON_NANO_MODEL_ID]) {
+    const t = io();
+    await selectEngine({ ...LIVE, model }, t.io).model(samplePrompt());
+    assert.deepEqual(t.fake.calls[0].body.chat_template_kwargs, { enable_thinking: false });
+  }
+});
+
+test('reasoning-off is not sent for Super, arbitrary ids or a case-different Nano id', async () => {
+  for (const model of [NEMOTRON_SUPER_MODEL_ID, 'other/model', NEMOTRON_NANO_MODEL_ID.toLowerCase()]) {
+    const t = io();
+    await selectEngine({ ...LIVE, model }, t.io).model(samplePrompt());
+    assert.ok(!('chat_template_kwargs' in t.fake.calls[0].body), model);
+  }
+});
+
+test('the Worker configuration keeps its 350-token cap and carries the Nano setting', async () => {
+  const t = io();
+  await selectEngine({ ...LIVE, maxTokens: 350, timeoutMs: 14_000 }, t.io).model(samplePrompt());
+  assert.equal(t.fake.calls[0].body.max_tokens, 350);
+  assert.deepEqual(t.fake.calls[0].body.chat_template_kwargs, { enable_thinking: false });
+});
+
 test('the configured caps reach the limiter', async () => {
   const t = io();
   const engine = selectEngine({ ...LIVE, userDailyCap: 1, globalDailyCap: 10 }, t.io);

@@ -44,6 +44,19 @@ test('the model ids match the project context', () => {
   assert.equal(NEMOTRON_SUPER_MODEL_ID, 'nvidia/nemotron-3-super-120b-a12b');
 });
 
+test('chatTemplateKwargs is sent when supplied, without overriding any other request field', async () => {
+  const plain = recordingFetch(() => jsonResponse(completion(GOOD)));
+  await model(plain)(samplePrompt());
+  const withKwargs = recordingFetch(() => jsonResponse(completion(GOOD)));
+  await model(withKwargs, { chatTemplateKwargs: { enable_thinking: false } })(samplePrompt());
+
+  const { chat_template_kwargs: kwargs, ...rest } = withKwargs.calls[0].body;
+  assert.deepEqual(kwargs, { enable_thinking: false });
+  assert.deepEqual(rest, plain.calls[0].body);
+  assert.ok(!('chat_template_kwargs' in plain.calls[0].body), 'omitted means absent from the body');
+  assert.ok(!JSON.stringify(withKwargs.calls[0].body).includes(TEST_KEY));
+});
+
 test('sends exactly one fixed-URL request with the documented body', async () => {
   const fake = recordingFetch(() => jsonResponse(completion(GOOD)));
   const reply = await model(fake)(samplePrompt());

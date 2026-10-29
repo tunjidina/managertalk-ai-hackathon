@@ -60,14 +60,17 @@ export function selectEngine(input: LiveConfigInput, io: LiveConfigIo): Selected
   // A bad key shape or model id must not take the endpoint down: it is
   // reported as a mock service, never as a failed request.
   try {
+    const model = input.model || NEMOTRON_NANO_MODEL_ID;
     return {
       mode: 'live',
       model: createNebiusModel({
         apiKey: input.apiKey as string,
-        model: input.model || NEMOTRON_NANO_MODEL_ID,
+        model,
         fetchImpl: io.fetchImpl,
         maxTokens: input.maxTokens,
-        timeoutMs: input.timeoutMs
+        timeoutMs: input.timeoutMs,
+        // Reasoning off is verified live for this exact Nano id only; never assumed for other models.
+        chatTemplateKwargs: model === NEMOTRON_NANO_MODEL_ID ? { enable_thinking: false } : undefined
       }),
       limiter
     };
