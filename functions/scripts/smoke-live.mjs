@@ -16,7 +16,9 @@
 // preview of each reply that passed validation; off by default, so the default
 // output is counts, timings and token usage only), --skip-model-list (send
 // completions without verifying ids; by default an unreadable model list stops
-// the run before any completion).
+// the run before any completion), --variant NAME (run only that variant, e.g.
+// nano-thinking-off; an unknown name stops before any request; the default
+// budget then becomes 2: the model-list call plus one completion).
 // The key is read only from NEBIUS_API_KEY and is redacted from all output.
 
 // The compiled core is loaded by URL, not by file path. A dynamic import()
@@ -63,6 +65,16 @@ function numberFlag(name) {
 const maxCalls = numberFlag('--calls');
 const maxTokens = numberFlag('--max-tokens');
 
+let variantName;
+const variantIndex = args.indexOf('--variant');
+if (variantIndex !== -1) {
+  variantName = args[variantIndex + 1];
+  if (!variantName || variantName.startsWith('--')) {
+    console.error('--variant needs a variant name.');
+    process.exit(2);
+  }
+}
+
 if (live) {
   if (process.env.SMOKE_CONFIRM !== 'yes-make-live-calls') {
     console.error('Refusing to run live: set SMOKE_CONFIRM=yes-make-live-calls to confirm you approve live calls.');
@@ -83,6 +95,7 @@ try {
     maxTokens,
     showReplies,
     skipModelList,
+    variantName,
     emit: (line) => console.log(line)
   });
 } catch (error) {

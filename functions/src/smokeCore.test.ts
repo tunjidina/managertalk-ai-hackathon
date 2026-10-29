@@ -21,10 +21,47 @@ function nebiusFake() {
   });
 }
 
-test('the default plan covers Nano, Super and one experimental variant', () => {
+test('the default plan covers Nano, Super and two experimental variants', () => {
   const variants = defaultVariants();
   assert.deepEqual(variants.map((v) => v.model).slice(0, 2), [NEMOTRON_NANO_MODEL_ID, 'nvidia/nemotron-3-super-120b-a12b']);
-  assert.equal(variants.filter((v) => v.experimental).length, 1);
+  assert.equal(variants.filter((v) => v.experimental).length, 2);
+});
+
+test('the Nano reasoning-off variant sends the Nano id, the runtime token cap and enable_thinking=false', async () => {
+  const fake = nebiusFake();
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, maxCalls: 5, maxTokens: 350, emit: () => undefined });
+  const body = fake.calls[4].body;
+  assert.equal(body.model, NEMOTRON_NANO_MODEL_ID);
+  assert.equal(body.max_tokens, 350);
+  assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
+});
+
+test('--variant runs the model-list call and exactly one completion of the chosen variant only', async () => {
+  const fake = nebiusFake();
+  const report = await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, variantName: 'nano-thinking-off', maxTokens: 350, emit: () => undefined });
+  assert.equal(fake.calls.length, 2);
+  assert.equal(fake.calls[0].url, NEBIUS_MODELS_URL);
+  assert.equal(report.calls.length, 1);
+  assert.equal(report.calls[0].variant, 'nano-thinking-off (experimental)');
+  assert.equal(fake.calls[1].body.model, NEMOTRON_NANO_MODEL_ID);
+  assert.deepEqual(fake.calls[1].body.chat_template_kwargs, { enable_thinking: false });
+});
+
+test('--variant still honours an explicit budget and never runs other variants', async () => {
+  const fake = nebiusFake();
+  await runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, variantName: 'nano-default', maxCalls: 3, emit: () => undefined });
+  const completions = fake.calls.slice(1);
+  assert.equal(completions.length, 2);
+  assert.ok(completions.every((call) => call.body.model === NEMOTRON_NANO_MODEL_ID && !('chat_template_kwargs' in call.body)));
+});
+
+test('an unknown --variant fails before any request, and does not fall back to other variants', async () => {
+  const fake = nebiusFake();
+  await assert.rejects(
+    () => runSmoke({ live: true, apiKey: TEST_KEY, fetchImpl: fake, variantName: 'nano-thinkng-off', emit: () => undefined }),
+    /Unknown variant "nano-thinkng-off"\. Available: nano-default, super-default, super-thinking-off, nano-thinking-off/
+  );
+  assert.equal(fake.calls.length, 0);
 });
 
 test('a dry run makes no request, needs no key and says so', async () => {
@@ -190,7 +227,7 @@ test('models the platform does not list are skipped, so no completions are waste
   const models = onlyNano.calls.slice(1).map((call) => call.body.model);
   assert.ok(models.length > 0);
   assert.ok(models.every((model) => model === NEMOTRON_NANO_MODEL_ID));
-  assert.ok(report.calls.every((call) => call.variant === 'nano-default'));
+  assert.ok(report.calls.every((call) => call.variant.startsWith('nano-')));
   assert.match(out.lines.join('\n'), /NOT FOUND, skipped/);
 });
 

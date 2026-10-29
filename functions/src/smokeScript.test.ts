@@ -53,6 +53,15 @@ test('the script never hands a filesystem path to import()', () => {
   assert.deepEqual(imports, ['await import(coreUrl)']);
 });
 
+test('an unknown --variant exits with an error and a missing name is refused, with no request', () => {
+  const unknown = run(scriptPath, ['--variant', 'no-such-variant']);
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stderr, /Unknown variant "no-such-variant"/);
+  const missing = run(scriptPath, ['--variant']);
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /--variant needs a variant name/);
+});
+
 test('the dry run loads the compiled core and makes no request', () => {
   const result = run(scriptPath);
   assert.equal(result.status, 0, result.stderr);

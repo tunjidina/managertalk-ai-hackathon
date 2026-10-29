@@ -48,6 +48,14 @@ export function defaultVariants(): SmokeVariant[] {
       // Unverified: whether Token Factory forwards a chat-template flag.
       extraBody: { chat_template_kwargs: { enable_thinking: false } },
       experimental: true
+    },
+    {
+      name: 'nano-thinking-off (experimental)',
+      model: NEMOTRON_NANO_MODEL_ID,
+      // Unverified for Nano, as above. Last, so a small --calls still starts
+      // with the default Nano and Super variants.
+      extraBody: { chat_template_kwargs: { enable_thinking: false } },
+      experimental: true
     }
   ];
 }
@@ -98,6 +106,13 @@ export interface SmokeOptions {
    * to test a model the list endpoint does not show; ids are then unverified.
    */
   skipModelList?: boolean;
+  /**
+   * Run only the named variant (its name with or without the trailing
+   * " (experimental)"). An unknown name throws before any request. When set and
+   * no budget is given, the default budget is 2: the model-list call plus one
+   * completion.
+   */
+  variantName?: string;
   emit: (line: string) => void;
 }
 
@@ -131,7 +146,15 @@ function percentile(values: number[], p: number): number {
 
 export async function runSmoke(options: SmokeOptions): Promise<SmokeReport> {
   let variants = options.variants || defaultVariants();
-  const requested = Number.isFinite(options.maxCalls) ? (options.maxCalls as number) : 6;
+  if (options.variantName !== undefined) {
+    const wanted = options.variantName;
+    const selected = variants.filter((v) => v.name === wanted || v.name.replace(/ \(experimental\)$/, '') === wanted);
+    if (selected.length === 0) {
+      throw new Error('Unknown variant "' + wanted + '". Available: ' + variants.map((v) => v.name.replace(/ \(experimental\)$/, '')).join(', '));
+    }
+    variants = selected.slice(0, 1);
+  }
+  const requested = Number.isFinite(options.maxCalls) ? (options.maxCalls as number) : options.variantName !== undefined ? 2 : 6;
   const budget = Math.max(0, Math.min(Math.floor(requested), HARD_MAX_CALLS));
   const maxTokens = Math.max(1, Math.min(options.maxTokens || 600, MAX_TOKENS_CEILING));
   const timeoutMs = options.timeoutMs || 20_000;
