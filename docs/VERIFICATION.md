@@ -1,5 +1,9 @@
 # Verification record
 
+This file has two parts. **"Current verification (30 Oct 2026)"** at the end is the up-to-date state. Everything before it is the **historical record** of commit `f4a6336`, kept unchanged so the evidence trail is not rewritten; its statements, including "Nothing is deployed" and "No request has been made to Nebius", were true at that commit and are no longer current.
+
+## Historical record (commit f4a6336)
+
 Commit: `f4a633675372000ac4cacf8cb692eb92f55e3e07` on `claude/friendly-heisenberg-32besp`
 (repository `tunjidina/managertalk-ai-hackathon`).
 
@@ -32,7 +36,7 @@ copied-directory tests pass on Windows for paths with spaces, non-ASCII characte
 and both. This was not reproducible in the cloud container, where `cpSync` copies
 correctly.
 
-## What this does NOT verify
+## What this did NOT verify (at commit f4a6336)
 - **Live model inference.** No request has been made to Nebius Token Factory by
   anyone. No Nemotron model has been shown to be available, named correctly, or
   able to produce a reply. Model IDs, request parameters and limits are
@@ -49,3 +53,30 @@ correctly.
   "NVIDIA open source model" wording is unconfirmed (see `docs/GATE_A_READINESS.md`).
 - **Root dependency vulnerabilities.** They are reported, not remediated (see
   `docs/DEPENDENCY_AUDIT.md`).
+
+## Current verification (30 Oct 2026)
+Branch `integration/hackathon-p0-p2`. Evidence is kept apart by source.
+
+**Run on the project owner's Windows machine by the assistant, on a clean `npm ci` of this branch**
+| Check | Result |
+|---|---|
+| Client tests | 472 passed, 24 suites |
+| Backend (functions) tests | 323 passed |
+| Client typecheck (`tsc --noEmit`) | clean |
+| Production client build | passed |
+| Secret-pattern scan of the working tree and every commit | no matches |
+
+**Observed on the deployed demo (Worker `managertalk-demo`, Firebase project `managertalk-hackathon-demo`)**
+- Source of each item is stated; "owner-reported" means the owner saw it in their browser and told the assistant.
+- An unauthenticated request to `/api/s02/turn` returns 401 (assistant, direct request).
+- Real Firebase ID tokens are accepted, and the daily-limit Durable Object is called on valid turns (assistant, from the Worker's own log stream).
+- Live turns through Nebius Token Factory with `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` returned HTTP 200 with a validated reply (assistant, log stream; owner-reported chip and reply text).
+- Failures seen and handled by the labelled scripted fallback: an instant 502 caused by two Cloudflare Workers incompatibilities (fixed, with regression tests), one HTTP 529 from Nebius, and one reply refused by the reply validator for an unlogged reason (see `docs/CLOUDFLARE_DEPLOYMENT.md`).
+- The deployed frontend bundle contains the rubric `mt-s02-rules-v1`, the assessment-record code and the My progress screen (assistant, from the served file). Firestore rules for `assessmentRecords` were released to the demo project.
+
+**Still NOT verified**
+- **Assessment persistence and My progress against the live database.** The rules were released, but a completed run being saved, and the dashboard reading it back, have not been confirmed live. The rules have only been checked as text by a test; they have not run in the Firestore emulator.
+- **The assessment is rule-based.** It has not been validated against expert judgement; it is not an AI assessment and is not claimed to measure real-world skill.
+- **Reproducibility of the deployed bundle name.** Rebuilding in another folder gives a different `main.*.js` filename because Create React App derives CSS-module class-name hashes from the project path. A comparison showed the code is otherwise equivalent.
+- **Free-plan limits and judging load**, Google sign-in on the deployed host, credits and data retention, and hackathon eligibility wording (see `docs/GATE_A_READINESS.md`).
+- **Root dependency vulnerabilities** are reported, not remediated (see `docs/DEPENDENCY_AUDIT.md`).

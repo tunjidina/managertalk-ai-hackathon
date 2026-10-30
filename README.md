@@ -6,7 +6,7 @@ ManagerTalk provides a realistic, guided environment for developing **clarity, e
 
 **Who it is for:** line managers and team leads who want to rehearse a hard conversation, such as raising a performance concern or following up a silent team member, before having it with a real person.
 
-**Hackathon submission:** built for the Nebius × NVIDIA Global AI Hackathon. In MT-S02 the employee, Tomás, answers in character using an **NVIDIA Nemotron** model served through **Nebius Token Factory** and called from a **Cloudflare Worker**. The coaching assessment is **rule-based, not AI** (see [How MT-S02 is assessed](#how-mt-s02-is-assessed)).
+**Hackathon submission:** built for the Nebius × NVIDIA Global AI Hackathon (Best Apps and Agents track). In MT-S02 the employee, Tomás, answers in character using an **NVIDIA Nemotron** model served through **Nebius Token Factory** and called from a **Cloudflare Worker**. The coaching assessment is **rule-based, not AI** (see [How MT-S02 is assessed](#how-mt-s02-is-assessed)).
 
 **Demo:** https://managertalk-demo.tunjidina12.workers.dev. Create an account with an email address you can read. No demo credentials are provided.
 
@@ -484,9 +484,11 @@ Authentication, profile persistence, scenario state, navigation, and certificate
 
 ---
 
-#   Shipaton 2026
+#   Hackathon context
 
-ManagerTalk was built for **Shipaton 2026**.
+**This submission is for the Nebius × NVIDIA Global AI Hackathon, Best Apps and Agents track.** The track requires a runtime call to the Nebius Token Factory inference API with NVIDIA Nemotron models; MT-S02's live replies make that call (see [Cloudflare Worker and Nebius](#cloudflare-worker-and-nebius-the-deployed-demo)). The official rules page is `https://nebiusglobalaihackathon.devpost.com/rules`; this README does not restate them, and `docs/GATE_A_READINESS.md` lists what remains unconfirmed.
+
+The application's base (scenario framework, authentication, progress, certificate) was first built for **Shipaton 2026**, as earlier versions of this README stated. The live-AI Tomás replies, the Cloudflare Worker, the rule-based assessment records and the My progress view were added for the Nebius × NVIDIA submission.
 
 The project explores how interactive simulations, structured behavioural models, and AI-assisted development can be combined to create practical workplace learning experiences.
 
@@ -538,4 +540,4 @@ Potential areas for future development include:
 
 Nottingham, UK
 
-Built for **Shipaton 2026**.
+Built for the **Nebius × NVIDIA Global AI Hackathon** (base application first built for Shipaton 2026).

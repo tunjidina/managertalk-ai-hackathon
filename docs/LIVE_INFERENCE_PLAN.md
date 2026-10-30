@@ -1,8 +1,8 @@
 # Live inference: feasibility and smallest safe integration plan (documentation research only)
 
-> **Status note:** this is the proposal as written before implementation. Parts of it are now built and tested with fake network only; nothing has been deployed and no live Nebius call has been made. See `docs/DEPLOYMENT.md` and the git history for what exists.
+> **Current status (30 Oct 2026):** this plan was implemented and the result is deployed. The live path runs as a Cloudflare Worker (`docs/CLOUDFLARE_DEPLOYMENT.md`) calling Nebius Token Factory with `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, and live turns have returned validated replies. See "Outcome" at the end of this document for what changed from the plan. Everything between this note and "Outcome" is the original proposal, kept unchanged as a historical record; statements in it such as "no call was made" or "nothing is deployed" describe the time it was written, not now.
 
-Status: proposal. No API call to Nebius succeeded or was made. One unauthenticated connectivity probe was attempted and blocked by this container's proxy (see section 1). Nothing is deployed, no secret exists in this session, and P1 plus the design spec remain uncommitted.
+Status at the time of writing (historical): proposal. No API call to Nebius succeeded or was made. One unauthenticated connectivity probe was attempted and blocked by this container's proxy (see section 1). Nothing is deployed, no secret exists in this session, and P1 plus the design spec remain uncommitted.
 
 ## 1. Feasibility summary
 
@@ -57,3 +57,20 @@ Status: proposal. No API call to Nebius succeeded or was made. One unauthenticat
 1. You allow the Nebius host and store the key, and approve Gate A (about 20 calls, cap $0.10), or run the script yourself.
 2. I write the smoke script (no live run until you say) and the Gate B code with fake-fetch tests, in a state that works the moment a key exists.
 3. You review the Tomás dialogue below; the scripted engine ships only with your approved lines.
+
+## Outcome (30 Oct 2026): what was decided and what happened
+This section records results; the proposal above is unchanged.
+
+| Plan item | What happened |
+|---|---|
+| 5 Model | **Nano**, `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, with `chat_template_kwargs: { enable_thinking: false }` sent only for that exact id. A direct Nebius call with this configuration succeeded (HTTP 200, a valid reply) before deployment. Whether reasoning is truly off on the platform is not independently confirmed; replies must pass the reply validator, which rejects reasoning text. |
+| Endpoint | The documented global host `api.tokenfactory.nebius.com/v1/chat/completions`, not the regional host. Not changed. |
+| 6 Hosting | **Cloudflare Worker** (`managertalk-demo`, workers.dev) instead of Firebase Functions on the Blaze plan, with Firebase Auth and Firestore on the demo project `managertalk-hackathon-demo`. The Firebase Functions path remains in `functions/src/index.ts`. |
+| Secret | A Cloudflare secret, `NEBIUS_API_KEY`, set with `wrangler secret put`. It is not in the repository. |
+| 8 Caps | 40 turns per user and 300 overall per day, enforced by a Durable Object (`LIMITER`), as proposed. |
+| Limits in the Worker | 350 output tokens and a 14-second model timeout (the browser gives up at 20 s). |
+| Gate B tests | Built and passing with a fake `fetch`. These did **not** catch two Cloudflare Workers incompatibilities (see `docs/CLOUDFLARE_DEPLOYMENT.md`, "Lessons from the first live deployment"): both only appeared against the real runtime. |
+| Honest labels | As proposed: `Live` only for a validated model reply; any failure falls back to a labelled scripted reply. |
+| Observed behaviour | The two successful turns that were logged took 735 ms and 3,308 ms (only a handful of turns were run, so this is not a performance measurement). Nebius answered HTTP 529 once, and one reply was refused by the validator; both showed the scripted fallback. |
+
+Still open (not resolved by this work): the official hackathon rules' wording on the Nemotron licence and judge access (see `docs/GATE_A_READINESS.md`), the credit balance and expiry, whether Zero Data Retention is enabled on the Nebius organisation, and the judge sign-in approach. The submission targets the **Nebius × NVIDIA Global AI Hackathon, Best Apps and Agents track**.

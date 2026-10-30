@@ -1,6 +1,8 @@
-# Zero-cost demo on Cloudflare Workers (manual steps; nothing deployed)
+# Demo on Cloudflare Workers (manual steps)
 
-Status: implemented, unit tested, and run locally with Wrangler 4.154.0: `wrangler deploy --dry-run` bundles it, and `wrangler dev --local` starts it, serves the built app, and rejects unauthenticated, malformed and oversized requests to `/api/s02/turn`. **Not deployed, and not run against real Firebase tokens, real Google signing keys, a live Durable Object request or Nebius.** Free-plan limits are unverified.
+**Current status (30 Oct 2026):** deployed as the Worker `managertalk-demo` on workers.dev with Wrangler 4.154.0, in live mode, against the demo Firebase project `managertalk-hackathon-demo`, with the `LIMITER` Durable Object and the `NEBIUS_API_KEY` secret bound. Observed on the deployed Worker: an unauthenticated request gets 401; an authenticated request is verified against real Firebase ID tokens and Google's signing keys; the Durable Object limiter is called on each valid turn; and live turns have returned HTTP 200 with a model reply from Nebius Token Factory. Failures observed along the way are listed under "Lessons from the first live deployment" below. Items still unconfirmed are under "Still unverified".
+
+**Historical status (before the first deployment):** implemented, unit tested, and run locally with Wrangler 4.154.0: `wrangler deploy --dry-run` bundled it, and `wrangler dev --local` started it, served the built app, and rejected unauthenticated, malformed and oversized requests to `/api/s02/turn`. It had not been deployed or run against real Firebase tokens, real Google signing keys, a live Durable Object request or Nebius, and free-plan limits were unverified. The sections below that describe those gaps are kept as the record of what was unconfirmed at that time.
 
 ## What it is
 One Worker (entry `functions/src/worker/index.ts`, logic in `functions/src/worker/app.ts`, configured by `wrangler.toml`) serves the built React app and `POST /api/s02/turn` from one origin, so the browser needs no CORS and the client is unchanged. Firebase Authentication and Firestore stay as they are, on a Spark project.
@@ -36,13 +38,25 @@ Wrangler is deliberately not a dependency of this repository; it is fetched on d
 ## Entry point rule
 Wrangler and the Workers runtime treat every export of the entry module as a handler or a Durable Object class. `index.ts` therefore exports only the default handler and `DailyLimiter`; testable helpers (`createWorker`, `parseCap`) are in `app.ts`. Exporting anything else makes `wrangler dev` fail with "Incorrect type for map entry". `entry.test.ts` guards this.
 
-## Unverified (confirm before relying on them)
-- Wrangler 4.154.0 accepted `compatibility_date = "2026-10-01"` and the `[assets]` / `ASSETS` binding in the dry-run bundle and in `wrangler dev --local`. A real deployment has not been tried, so acceptance by the Cloudflare service itself is unconfirmed.
-- That SQLite-backed Durable Objects, `transactionSync` and `state.storage.sql` are available on the free plan with the shapes used here.
-- Free-plan limits: daily requests, CPU time per request (RS256 verification, JSON parsing and reply validation are small but unmeasured), Durable Object requests and storage.
-- That `jose`'s remote key set (`createRemoteJWKSet`) works inside a Worker and that Google's key URL in `firebaseToken.ts` is current.
-- That a request over the body limit is rejected cheaply (it is tested locally with fake streams only).
-- Hackathon eligibility of this architecture, the model ID and casing, credits and data retention (see `docs/GATE_A_READINESS.md`).
+## Lessons from the first live deployment
+Two things that worked in Node and in the unit tests (which use a fake `fetch`) failed in the real Workers runtime, both as an instant HTTP 502 `model_unavailable` before any request reached Nebius. Each now has a regression test.
+- **`redirect: 'error'` is rejected by the Workers runtime.** The Nebius call uses `redirect: 'manual'` instead; a 3xx response is not `ok`, so it still fails and the key is never sent elsewhere.
+- **`fetch` must be called as a plain function.** Calling it as `config.fetchImpl(...)` gives it the config object as `this`, which Workers reject ("Illegal invocation"). The client copies it to a local variable first.
+- **Failure diagnostics, log-only.** A failed model call now logs `upstream` (`http_<status>` or `fetch_<ErrorName>`, never the message) and, for a refused reply, `reason` (an allow-listed code). Neither reaches the browser. This is how the two causes above were found. Use `wrangler tail <worker> --format json` to read them.
+- **Provider behaviour seen:** Nebius returned HTTP 529 on one turn (shown to the user as a scripted fallback), and one reply was refused by the reply validator for a reason that was not logged at the time.
+
+## Resolved since the first version of this document
+- Wrangler 4.154.0 deployed this configuration (`compatibility_date = "2026-10-01"`, the `[assets]`/`ASSETS` binding, the `LIMITER` Durable Object with a `new_sqlite_classes` migration) on the Cloudflare account used for the demo.
+- `jose`'s remote key set works inside the Worker against Google's signing keys: valid Firebase ID tokens are accepted and bad or missing tokens get 401.
+- The limiter Durable Object receives a request per valid turn (seen in the Worker's logs).
+- Live inference through Nebius Token Factory has returned a validated reply with the configured Nano model id (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`).
+
+## Still unverified
+- That the free plan's limits (daily requests, CPU time per request, Durable Object requests and storage) hold under judging traffic. Only light manual use has been observed.
+- Whether the Cloudflare plan in use is the free plan; this was not checked.
+- That a request over the body limit is rejected cheaply (tested locally with fake streams only).
+- Credits and data retention on the Nebius side (see `docs/GATE_A_READINESS.md`).
+- Whether adding the workers.dev host to the Firebase authorised domains was needed: email/password sign-in works there, but Google sign-in on the deployed host was not tested.
 
 ## What the local tests do and do not show
 Tested (Node, no network): valid and invalid tokens, key-set failure, project-id failure, limiter caps and rollback on a real SQLite database, routing, request validation, mock mode without a key or network, live mode with a fake model, key never in responses or logs. Also verified locally with Wrangler 4.154.0 (Linux, Node 22): the dry-run bundle succeeds, and `wrangler dev --local` starts the Worker, serves the built app, and rejects unauthenticated, malformed, wrong-content-type, oversized and wrong-method requests to `/api/s02/turn`. Not verified: real Firebase tokens and Google signing-key retrieval (the local run rejected a malformed token before any key fetch), a real Durable Object limiter request, CPU limits, live Nebius inference, and deployment.
