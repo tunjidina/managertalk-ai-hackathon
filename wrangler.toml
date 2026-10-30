@@ -27,9 +27,9 @@ new_sqlite_classes = ["DailyLimiter"]
 
 [vars]
 # Mock until the owner has verified a live turn. Anything but exactly "live" is mock.
-S02_ENGINE_MODE = "mock"
+S02_ENGINE_MODE = "live"
 # The demo Firebase project's id (not the production project). Empty rejects every token.
-FIREBASE_PROJECT_ID = ""
+FIREBASE_PROJECT_ID = "managertalk-hackathon-demo"
 # NEBIUS_MODEL = "..."            # optional; defaults to the model in nebiusModel.ts
 # S02_USER_DAILY_CAP = "40"
 # S02_GLOBAL_DAILY_CAP = "300"
