@@ -28,6 +28,7 @@ import {
   OUTAGE_MARKERS,
   PERSONALITY_MARKERS,
   REASSURANCE_MARKERS,
+  withoutBoundaryClarifications,
   REBUTTAL_MARKERS,
   RESOLUTION_MARKERS,
   containsAny,
@@ -162,7 +163,7 @@ export function deriveSignals(
   const someNextStep = hasCheckpointDate || wordCount(run.closing) >= MIN_STAGE_WORDS;
 
   const reassuranceInsteadOfStructure =
-    containsAny(run.closing, REASSURANCE_MARKERS) ||
+    containsAny(withoutBoundaryClarifications(run.closing), REASSURANCE_MARKERS) ||
     containsAny(run.closing, RESOLUTION_MARKERS);
 
   // --- Poor criteria --------------------------------------------------

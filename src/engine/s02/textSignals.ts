@@ -155,6 +155,41 @@ export const REASSURANCE_MARKERS: string[] = [
   "you'll be fine"
 ];
 
+/**
+ * The blueprint REQUIRES the closing to clarify what is not being decided
+ * (role, rating, promotion, technical judgement). A sentence that does so
+ * names those topics without being reassurance, so the reassurance markers
+ * must not fire on it.
+ *
+ * A sentence counts as a boundary clarification only when it has all three:
+ * a negation, a framing word saying what the conversation is or is not
+ * doing, and no assurance wording. Anything that promises an outcome
+ * ("don't worry", "won't affect", "you'll be fine", "I'll make sure") fails
+ * the test and stays subject to the reassurance markers. Sentence-level on
+ * purpose: a negation in one sentence never excuses another.
+ */
+const BOUNDARY_NEGATION = /(^|[^a-z0-9])(not|isn't|aren't|wasn't|is no|no|nothing|neither|nor|never|can't|cannot|won't be)([^a-z0-9]|$)/;
+const BOUNDARY_FRAMING =
+  /(^|[^a-z0-9])(about|discuss(?:ing|ed)?|decid(?:e|ed|ing)|decisions?|review|on the table|conversation|topic|part of|relates? to|concerned with|being (?:assessed|judged|changed|reviewed)|at stake|in play|promise|promises)([^a-z0-9]|$)/;
+const ASSURANCE_WORDING =
+  /(^|[^a-z0-9])(worry|safe|fine|affect|affected|make sure|ensure|guarantee|get promoted|will get|will stay|will remain|bonus|pay rise|pay raise|rating will)([^a-z0-9]|$)/;
+
+function splitSentences(text: string): string[] {
+  return (text.match(/[^.!?\n]+[.!?]*/g) || []).map((part) => part.trim()).filter((part) => part.length > 0);
+}
+
+export function isBoundaryClarification(sentence: string): boolean {
+  const text = normalise(sentence);
+  return BOUNDARY_NEGATION.test(text) && BOUNDARY_FRAMING.test(text) && !ASSURANCE_WORDING.test(text);
+}
+
+/** The text with boundary-clarifying sentences removed; all other sentences are kept. */
+export function withoutBoundaryClarifications(text: string): string {
+  return splitSentences(text)
+    .filter((sentence) => !isBoundaryClarification(sentence))
+    .join(' ');
+}
+
 /** "Implying resolution", "Must not imply resolution". */
 export const RESOLUTION_MARKERS: string[] = [
   'this is resolved',

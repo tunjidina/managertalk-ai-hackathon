@@ -28,6 +28,7 @@ import {
   OUTAGE_MARKERS,
   PERSONALITY_MARKERS,
   REASSURANCE_MARKERS,
+  withoutBoundaryClarifications,
   REBUTTAL_MARKERS,
   RESOLUTION_MARKERS,
   containsAny,
@@ -161,7 +162,10 @@ export function buildEvidence(run: S02RunInput, signals: S02Signals): CoachingEv
     if (!flagged) {
       continue;
     }
-    const found = findQuote(stages, markers);
+    // The closing's boundary-clarifying sentences are not reassurance, so they are never quoted as such.
+    const searched: Array<[S02InputStage, string]> =
+      id === 'reassurance-used' ? [['closing', withoutBoundaryClarifications(run.closing)]] : stages;
+    const found = findQuote(searched, markers);
     items.push(
       found
         ? quoteItem(id, 'concern', found, what)
