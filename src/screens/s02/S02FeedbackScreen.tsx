@@ -6,6 +6,8 @@ import { S02BlueprintMissing, useS02Blueprint } from './S02BlueprintGuard';
 import { currentRunInput, useS02SessionState } from '../../store/s02SessionState';
 import { buildEvidence } from '../../engine/s02/evidence';
 import { useNavigationState } from '../../store/navigationState';
+import { useAuthState } from '../../store/authState';
+import { confirmDiscardUnsavedAssessment } from '../../utils/confirmDiscardUnsaved';
 
 const styles: Record<string, React.CSSProperties> = {
   ...stageStyles,
@@ -41,6 +43,9 @@ const S02FeedbackScreen: React.FC = () => {
     [score, session]
   );
   const setCurrentScreen = useNavigationState((state) => state.setCurrentScreen);
+  const assessmentSave = useS02SessionState((state) => state.assessmentSave);
+  const retryAssessmentSave = useS02SessionState((state) => state.retryAssessmentSave);
+  const user = useAuthState((state) => state.user);
 
   if (!blueprint) {
     return <S02BlueprintMissing />;
@@ -49,8 +54,17 @@ const S02FeedbackScreen: React.FC = () => {
   const text = blueprint.ui_screens.feedback;
 
   const handleRestart = () => {
+    if (!confirmDiscardUnsavedAssessment()) {
+      return;
+    }
     resetSession();
     setCurrentScreen('scenario_select');
+  };
+
+  const handleRetrySave = () => {
+    if (user) {
+      void retryAssessmentSave(user.uid);
+    }
   };
 
   return (
@@ -62,6 +76,22 @@ const S02FeedbackScreen: React.FC = () => {
       </header>
 
       <div style={styles.divider} />
+
+      {score && (
+        <div role="status" aria-live="polite" style={styles.hint}>
+          {assessmentSave.status === 'saved' && 'Assessment saved'}
+          {assessmentSave.status === 'saving' && 'Saving your assessment…'}
+          {assessmentSave.status === 'idle' && 'Your assessment has not been saved yet.'}
+          {assessmentSave.status === 'failed' && (
+            <>
+              {'Assessment not saved. ' + (assessmentSave.message || '')}{' '}
+              <button type="button" onClick={handleRetrySave}>
+                Retry
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {evidence && (
         <section style={styles.section} aria-labelledby="evidence-heading">

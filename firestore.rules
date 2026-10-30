@@ -92,5 +92,43 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    // ----------------------------------------------------------------
+    // MT-S02 assessment records — assessmentRecords/{userId}_{scenarioId}_{runId}
+    //
+    // Immutable: one record per run, created once by its owner, never
+    // changed or deleted. The document id must start with the owner's uid,
+    // so one user cannot create a record under another user's id. The
+    // allowed fields are listed exactly, so free text (responses, replies,
+    // quotations) cannot be written even by a modified client.
+    //
+    // `resource == null` is allowed on read so the client's transaction can
+    // check whether a run's record already exists; a record that does
+    // exist is readable only by its owner.
+    // ----------------------------------------------------------------
+    match /assessmentRecords/{docId} {
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && docId.matches(request.auth.uid + '_.*')
+                    && request.resource.data.keys().hasOnly([
+                         'userId', 'scenarioId', 'runId', 'rubricVersion',
+                         'tier', 'criteria', 'feedbackBranch', 'createdAt'
+                       ])
+                    && request.resource.data.keys().hasAll([
+                         'userId', 'scenarioId', 'runId', 'rubricVersion',
+                         'tier', 'criteria', 'feedbackBranch', 'createdAt'
+                       ])
+                    && request.resource.data.tier in ['excellent', 'adequate', 'poor']
+                    && request.resource.data.criteria is map
+                    && request.resource.data.createdAt == request.time;
+
+      allow read: if request.auth != null
+                  && (resource == null
+                      || resource.data.userId == request.auth.uid);
+
+      allow update: if false;
+      allow delete: if false;
+    }
   }
 }

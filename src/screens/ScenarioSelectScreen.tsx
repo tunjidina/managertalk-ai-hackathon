@@ -7,6 +7,7 @@ import { useActiveScenarioState } from '../store/activeScenarioState';
 import { useScenarioProgressState } from '../store/scenarioProgressState';
 import { useEntitlementState } from '../store/entitlementState';
 import Paywall from '../components/Paywall';
+import { confirmDiscardUnsavedAssessment } from '../utils/confirmDiscardUnsaved';
 import {
   SCENARIO_REGISTRY,
   ScenarioRegistryEntry
@@ -69,6 +70,12 @@ const ScenarioSelectScreen: React.FC = () => {
    */
   const openScenario = useCallback(
     (entry: ScenarioRegistryEntry) => {
+      // Nothing changes until the user has agreed to discard an unsaved
+      // MT-S02 assessment.
+      if (entry.flowKind === 'blueprint' && !confirmDiscardUnsavedAssessment()) {
+        return;
+      }
+
       // Order matters. The progress store is cleared first so the two
       // hooks cannot save the outgoing scenario's step against the
       // incoming scenario's document during the render in between.

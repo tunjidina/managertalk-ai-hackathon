@@ -6,6 +6,7 @@ import {
   currentRunInput,
   useS02SessionState
 } from '../../store/s02SessionState';
+import { useAuthState } from '../../store/authState';
 import { scoreRun } from '../../engine/s02/scoringEngine';
 import { selectFeedback } from '../../engine/s02/feedbackSelector';
 
@@ -29,6 +30,8 @@ const S02ClosingScreen: React.FC = () => {
   const setCheckpoint = useS02SessionState((state) => state.setCheckpoint);
   const setScore = useS02SessionState((state) => state.setScore);
   const setFeedback = useS02SessionState((state) => state.setFeedback);
+  const persistAssessment = useS02SessionState((state) => state.persistAssessment);
+  const user = useAuthState((state) => state.user);
 
   if (!blueprint) {
     return <S02BlueprintMissing />;
@@ -41,6 +44,12 @@ const S02ClosingScreen: React.FC = () => {
     setFeedback(
       selectFeedback(score.signals, score.tier, blueprint.feedback_logic)
     );
+    // Not awaited here (this callback runs on the way to the next screen);
+    // the store holds the saving / saved / failed state, which the feedback
+    // screen shows, with a retry.
+    if (user) {
+      void persistAssessment(user.uid);
+    }
   };
 
   const extras = (
