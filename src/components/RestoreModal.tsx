@@ -3,6 +3,8 @@ import React from 'react';
 interface Props {
   visible: boolean;
   savedAt?: number;
+  /** Replaces the default "saved on this device" explanation. */
+  message?: string;
   onContinue: () => void;
   onStartOver: () => void;
 }
@@ -10,6 +12,7 @@ interface Props {
 const RestoreModal: React.FC<Props> = ({
   visible,
   savedAt,
+  message,
   onContinue,
   onStartOver
 }) => {
@@ -33,9 +36,13 @@ const RestoreModal: React.FC<Props> = ({
         </h2>
 
         <p id="restore-modal-body" style={styles.body}>
-          An unfinished scenario is saved on this device
-          {savedAt ? ` from ${formatSavedAt(savedAt)}` : ''}. You can pick it up
-          from the screen you were on, or clear it and start the scenario again.
+          {message || (
+            <>
+              An unfinished scenario is saved on this device
+              {savedAt ? ` from ${formatSavedAt(savedAt)}` : ''}. You can pick it up
+              from the screen you were on, or clear it and start the scenario again.
+            </>
+          )}
         </p>
 
         <div style={styles.actions}>

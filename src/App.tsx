@@ -13,7 +13,8 @@ import { screenToStep } from './types/scenarioProgress';
 import { useActiveScenarioState } from './store/activeScenarioState';
 import { useS02Progress } from './hooks/useS02Progress';
 import { useS02SessionState } from './store/s02SessionState';
-import { S02_STAGE_TO_SCREEN, isS02Screen } from './screens/s02/s02Navigation';
+import { S02_STAGE_TO_SCREEN, isS02Screen, s02ResumeMessage } from './screens/s02/s02Navigation';
+import { resetScenarioStateForSignOut } from './utils/signOutReset';
 
 import AuthGate from './components/AuthGate';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -320,6 +321,7 @@ const App: React.FC = () => {
     clearSession();
     performReset();
     resetProgress();
+    resetScenarioStateForSignOut();
     setRestoreResolved(false);
     setLocalSessionRestored(false);
     setPendingSession(null);
@@ -427,6 +429,14 @@ const App: React.FC = () => {
         savedAt={pendingSession ? pendingSession.savedAt : undefined}
         onContinue={handleContinueSession}
         onStartOver={handleStartOver}
+      />
+
+      {/* MT-S02 saved stage: resume or start over */}
+      <RestoreModal
+        visible={pendingSession === null && s02Progress.pendingResumeStage !== null}
+        message={s02ResumeMessage(s02Progress.pendingResumeStage)}
+        onContinue={s02Progress.resumeSaved}
+        onStartOver={s02Progress.startOver}
       />
     </div>
   );

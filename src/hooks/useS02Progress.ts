@@ -39,6 +39,10 @@ export interface UseS02ProgressApi {
   lastError: string | null;
   completed: boolean;
   retry: () => void;
+  /** An unfinished saved stage awaiting the user's resume / start-over choice. */
+  pendingResumeStage: S02Stage | null;
+  resumeSaved: () => void;
+  startOver: () => void;
 }
 
 const FINAL_S02_STAGE: S02Stage = 'feedback';
@@ -81,9 +85,26 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
 
   const [retryToken, setRetryToken] = useState(0);
 
+  // While set, nothing is restored and nothing is saved: the saved stage
+  // must not be overwritten before the user has chosen.
+  const [pendingResumeStage, setPendingResumeStage] = useState<S02Stage | null>(null);
+
   const retry = useCallback(() => {
     loadedKeyRef.current = null;
     setRetryToken((token) => token + 1);
+  }, []);
+
+  const resumeSaved = useCallback(() => {
+    if (pendingResumeStage) {
+      restoreStage(pendingResumeStage);
+    }
+    setPendingResumeStage(null);
+  }, [pendingResumeStage, restoreStage]);
+
+  // The session stays at stage one; the save effect then records 'sbi' in
+  // this user's own MT-S02 document only.
+  const startOver = useCallback(() => {
+    setPendingResumeStage(null);
   }, []);
 
   // -----------------------------
@@ -111,6 +132,7 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
     loadedKeyRef.current = key;
 
     let live = true;
+    setPendingResumeStage(null);
     beginLoad();
 
     loadScenarioState(uid, scenarioId).then((result) => {
@@ -141,7 +163,12 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
       });
 
       if (resume && savedStage !== useS02SessionState.getState().stage) {
-        restoreStage(savedStage);
+        // An unfinished run asks first; a completed one restores as before.
+        if (!result.data.completed && savedStage !== 'sbi') {
+          setPendingResumeStage(savedStage);
+        } else {
+          restoreStage(savedStage);
+        }
       }
     });
 
@@ -165,7 +192,7 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
       return;
     }
 
-    if (status !== 'ready') {
+    if (status !== 'ready' || pendingResumeStage) {
       return;
     }
 
@@ -210,7 +237,7 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
     return () => {
       live = false;
     };
-  }, [active, uid, scenarioId, status, stage, beginSave, saveFailed]);
+  }, [active, uid, scenarioId, status, stage, pendingResumeStage, beginSave, saveFailed]);
 
   // -----------------------------
   // 3. Clear refs on sign-out
@@ -223,7 +250,17 @@ export function useS02Progress(options: UseS02ProgressOptions): UseS02ProgressAp
     loadedKeyRef.current = null;
     savedStageRef.current = null;
     completedRef.current = false;
+    setPendingResumeStage(null);
   }, [uid]);
 
-  return { status, saving, lastError, completed, retry };
+  return {
+    status,
+    saving,
+    lastError,
+    completed,
+    retry,
+    pendingResumeStage: active ? pendingResumeStage : null,
+    resumeSaved,
+    startOver
+  };
 }

@@ -17,6 +17,7 @@ import {
 } from '../store/conversationState';
 
 import { useNavigationState, Screen } from '../store/navigationState';
+import { isS02Screen } from '../screens/s02/s02Navigation';
 
 // -----------------------------
 // Storage key + schema version
@@ -208,8 +209,18 @@ export function hasSavedSession(): boolean {
 
 export function saveSession(): void {
   try {
-    const conversation = useConversationState.getState();
     const navigation = useNavigationState.getState();
+
+    // MT-S02 stage restoration is owned by Firestore (useS02Progress). If the
+    // MT-S01 autosave captured an s02_* screen, the "Continue where you left
+    // off?" prompt would fire on refresh, set localSessionRestored=true, and
+    // silently block Firestore from restoring the correct MT-S02 stage. Skip
+    // the write whenever the active screen belongs to the MT-S02 flow.
+    if (isS02Screen(navigation.currentScreen)) {
+      return;
+    }
+
+    const conversation = useConversationState.getState();
 
     const snapshot: SavedSession = {
       version: SCHEMA_VERSION,
