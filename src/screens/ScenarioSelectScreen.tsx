@@ -146,6 +146,12 @@ const ScenarioSelectScreen: React.FC = () => {
         >
           Profile
         </button>
+        <button
+          style={styles.secondary}
+          onClick={() => setCurrentScreen('screen_progress')}
+        >
+          My progress
+        </button>
       </div>
 
       <div style={styles.grid}>

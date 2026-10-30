@@ -89,6 +89,7 @@ const SCREENS: Screen[] = [
   'certificate',
   'scenario_select',
   'screen_profile',
+  'screen_progress',
   's02_sbi',
   's02_exploration',
   's02_hypotheses',

@@ -127,6 +127,7 @@ const SCREEN_TO_STEP: Record<Screen, ScenarioStep> = {
   // stage lives in s02SessionState and is not yet persisted to Firestore.
   scenario_select: 'overview',
   screen_profile: 'overview',
+  screen_progress: 'overview',
   s02_sbi: 'conversation',
   s02_exploration: 'conversation',
   s02_hypotheses: 'conversation',

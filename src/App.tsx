@@ -42,6 +42,7 @@ import FeedbackScreen from './screens/FeedbackScreen';
 import CertificateScreen from './screens/CertificateScreen';
 import ScenarioSelectScreen from './screens/ScenarioSelectScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import ProgressScreen from './screens/ProgressScreen';
 import S02SbiScreen from './screens/s02/S02SbiScreen';
 import S02ExplorationScreen from './screens/s02/S02ExplorationScreen';
 import S02HypothesesScreen from './screens/s02/S02HypothesesScreen';
@@ -76,6 +77,7 @@ const stepInfo: Record<Screen, { step: number; label: string }> = {
   // labels come from its own flow rather than MT-S01's seven steps.
   scenario_select: { step: 1, label: 'Scenarios' },
   screen_profile: { step: 1, label: 'Profile' },
+  screen_progress: { step: 1, label: 'My progress' },
   s02_sbi: { step: 1, label: 'SBI' },
   s02_exploration: { step: 2, label: 'Exploration' },
   s02_hypotheses: { step: 3, label: 'Hypotheses' },
@@ -216,6 +218,9 @@ const App: React.FC = () => {
 
       case 'screen_profile':
         return <ProfileScreen />;
+
+      case 'screen_progress':
+        return <ProgressScreen />;
 
       // MT-S02. Which of these renders is decided by the S02 stage
       // machine, which the effect below follows.
