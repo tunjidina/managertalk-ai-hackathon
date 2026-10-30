@@ -8,6 +8,8 @@ import { ErrorBody, LIMIT_HEADER, SuccessBody, TurnDeps, handleTurn } from './ha
 import { ModelClient, mockModel } from './mockModel';
 import { ModelFailure, ModelFailureCode } from './nebiusModel';
 import { DailyLimiter, QuotaDecision } from './rateLimit';
+import { REJECTION_REASONS } from './log';
+import { RejectionReason } from './replyValidation';
 import { TEST_KEY } from './fetchSupport.test';
 import { captureLog, fakeVerifier, httpRequest } from './testSupport.test';
 
@@ -175,4 +177,68 @@ test('error bodies carry only generic messages, never the key or the input', asy
   assert.ok(!serialised.includes(TEST_KEY));
   assert.ok(!serialised.includes('SECRET-INPUT-MARKER'));
   assert.deepEqual(Object.keys(logs.entries[0]).sort(), ['latencyMs', 'mode', 'outcome', 'route', 'status']);
+});
+
+test('upstream detail reaches the log only, never the browser response', async () => {
+  for (const [failureCode, detail] of [['unavailable', 'http_404'], ['unavailable', 'fetch_TypeError'], ['upstream_auth', 'http_401']] as const) {
+    const { deps, logs } = setup({
+      mode: 'live',
+      limiter: limiterReturning({ allowed: true }),
+      model: async () => { throw new ModelFailure(failureCode, undefined, detail); }
+    });
+    const response = await handleTurn(httpRequest(), deps);
+    assert.equal(response.status, 502);
+    assert.deepEqual(response.body, { error: { code: 'upstream_unavailable', message: 'The conversation partner is unavailable right now.' } });
+    assert.ok(!JSON.stringify(response).includes(detail), 'the detail is not in the response');
+    assert.equal(logs.entries[0].upstream, detail);
+  }
+});
+
+test('a rejected reply logs its allowlisted reason, and the browser response is unchanged', async () => {
+  for (const [failureCode, reason] of [['rejected_reply', 'leak'], ['rejected_reply', 'forbidden_topic'], ['truncated', 'truncated']] as const) {
+    const { deps, logs } = setup({
+      mode: 'live',
+      limiter: limiterReturning({ allowed: true }),
+      model: async () => { throw new ModelFailure(failureCode, undefined, undefined, reason); }
+    });
+    const response = await handleTurn(httpRequest(), deps);
+    assert.equal(response.status, 502);
+    assert.deepEqual(response.body, { error: { code: 'upstream_unavailable', message: 'The conversation partner is unavailable right now.' } });
+    assert.ok(!JSON.stringify(response).includes(reason));
+    assert.equal(logs.entries[0].outcome, 'reply_rejected');
+    assert.equal(logs.entries[0].reason, reason);
+  }
+});
+
+test('a reason outside the allowlist, or on any other outcome, never reaches the log', async () => {
+  for (const bad of ['the user said hi', 'leak ' + TEST_KEY, 'LEAK', '']) {
+    const { deps, logs } = setup({ model: async () => { throw new ModelFailure('rejected_reply', undefined, undefined, bad); } });
+    await handleTurn(httpRequest(), deps);
+    assert.equal(logs.entries[0].reason, undefined);
+    assert.ok(!JSON.stringify(logs.entries).includes(TEST_KEY));
+  }
+  const { deps, logs } = setup({ model: async () => { throw new ModelFailure('unavailable', undefined, 'http_500', 'leak'); } });
+  await handleTurn(httpRequest(), deps);
+  assert.equal(logs.entries[0].reason, undefined, 'reason is logged for reply_rejected only');
+});
+
+test('the reason allowlist covers every reply-validation rejection code', () => {
+  const every: Record<RejectionReason, true> = {
+    not_text: true, empty: true, unterminated_reasoning: true, leak: true, forbidden_topic: true, mock_marker: true,
+    control_characters: true, link: true, unfinished: true, too_long: true, too_many_lines: true
+  };
+  for (const reason of Object.keys(every)) {
+    assert.ok((REJECTION_REASONS as readonly string[]).includes(reason), reason + ' is allowlisted');
+  }
+  assert.ok((REJECTION_REASONS as readonly string[]).includes('truncated'));
+  assert.equal(REJECTION_REASONS.length, Object.keys(every).length + 1);
+});
+
+test('an upstream detail of any other shape is dropped from the log', async () => {
+  for (const bad of ['http_404 ' + TEST_KEY, 'fetch_Type Error', 'Bearer abc', 'http_1234', '']) {
+    const { deps, logs } = setup({ model: async () => { throw new ModelFailure('unavailable', undefined, bad); } });
+    await handleTurn(httpRequest(), deps);
+    assert.equal(logs.entries[0].upstream, undefined);
+    assert.ok(!JSON.stringify(logs.entries).includes(TEST_KEY));
+  }
 });

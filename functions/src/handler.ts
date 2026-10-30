@@ -22,7 +22,7 @@
 
 import { VerifyIdToken, parseBearerToken } from './auth';
 import { MAX_MODEL_ID_CHARS_FOR_REPLY } from './limits';
-import { TurnLogger, TurnOutcome } from './log';
+import { TurnLogEntry, TurnLogger, TurnOutcome, sanitizeReason, sanitizeUpstream } from './log';
 import { EMPLOYEE_RESPONSE_STYLES, ModelClient, ModelReply } from './mockModel';
 import { ModelFailure, ModelFailureCode } from './nebiusModel';
 import { buildTrustedPrompt } from './prompts';
@@ -130,6 +130,12 @@ function isAcceptableReply(reply: ModelReply | null | undefined): reply is Model
   );
 }
 
+/** Log-only detail for a model failure; each field is re-checked against its allowlist before logging. */
+interface Diagnostics {
+  upstream?: string;
+  reason?: string;
+}
+
 interface FailureMapping {
   status: number;
   code: ErrorCode;
@@ -168,9 +174,19 @@ export async function handleTurn(
     status: number,
     outcome: TurnOutcome,
     body: SuccessBody | ErrorBody,
-    extraHeaders: Record<string, string> = {}
+    extraHeaders: Record<string, string> = {},
+    diagnostics: Diagnostics = {}
   ): TurnHttpResponse => {
-    deps.log({ route: ROUTE, mode: deps.mode || 'mock', status, outcome, latencyMs: now() - started });
+    const entry: TurnLogEntry = { route: ROUTE, mode: deps.mode || 'mock', status, outcome, latencyMs: now() - started };
+    const upstream = sanitizeUpstream(diagnostics.upstream);
+    if (upstream) {
+      entry.upstream = upstream;
+    }
+    const reason = outcome === 'reply_rejected' ? sanitizeReason(diagnostics.reason) : undefined;
+    if (reason) {
+      entry.reason = reason;
+    }
+    deps.log(entry);
     return { status, headers: { ...BASE_HEADERS, ...extraHeaders }, body };
   };
 
@@ -178,9 +194,10 @@ export async function handleTurn(
     status: number,
     code: ErrorCode,
     outcome: TurnOutcome,
-    extraHeaders: Record<string, string> = {}
+    extraHeaders: Record<string, string> = {},
+    diagnostics: Diagnostics = {}
   ): TurnHttpResponse =>
-    finish(status, outcome, { error: { code, message: MESSAGES[code] } }, extraHeaders);
+    finish(status, outcome, { error: { code, message: MESSAGES[code] } }, extraHeaders, diagnostics);
 
   try {
     if (request.method !== 'POST') {
@@ -256,7 +273,10 @@ export async function handleTurn(
           error.retryAfterSeconds !== undefined
             ? { 'Retry-After': String(error.retryAfterSeconds) }
             : {};
-        return fail(mapping.status, mapping.code, mapping.outcome, headers);
+        return fail(mapping.status, mapping.code, mapping.outcome, headers, {
+          upstream: error.upstream,
+          reason: error.reason
+        });
       }
       return fail(500, 'internal', 'model_error');
     }

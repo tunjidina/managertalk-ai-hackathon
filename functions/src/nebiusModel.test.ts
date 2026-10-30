@@ -239,12 +239,91 @@ test('a thrown build error never contains the key', () => {
 test('redirects are refused so the key can never be sent elsewhere', async () => {
   const fake = recordingFetch(() => jsonResponse(completion(GOOD)));
   await model(fake)(samplePrompt());
-  assert.equal(fake.calls[0].init.redirect, 'error');
+  // 'manual', not 'error': the Cloudflare Workers runtime throws on redirect: 'error'.
+  assert.equal(fake.calls[0].init.redirect, 'manual');
 
-  const redirected = (async () => {
-    throw new TypeError('redirect mode is set to error');
+  // Workers hand back the 3xx itself; it is never followed and fails as unavailable.
+  const workerRedirect = recordingFetch(() => jsonResponse('', 302, { location: 'https://elsewhere.example/v1' }));
+  await failsWith(workerRedirect, 'unavailable');
+  assert.equal(workerRedirect.calls.length, 1, 'the redirect target is never requested');
+
+  // Node returns an opaque redirect (status 0, not ok) for the same case.
+  await failsWith((async () => Response.error()) as typeof fetch, 'unavailable');
+
+  const thrown = (async () => {
+    throw new TypeError('network failure');
   }) as typeof fetch;
-  await failsWith(redirected, 'unavailable');
+  await failsWith(thrown, 'unavailable');
+});
+
+test('fetch is called as a plain function, as the Cloudflare runtime requires', async () => {
+  // workerd throws this TypeError when fetch runs with an object as `this`.
+  const strictFetch = async function (this: unknown) {
+    if (this !== undefined && this !== globalThis) {
+      throw new TypeError('Illegal invocation: function called with incorrect `this` reference.');
+    }
+    return jsonResponse(completion(GOOD));
+  } as typeof fetch;
+  const reply = await model(strictFetch)(samplePrompt());
+  assert.ok(reply.lines.length > 0);
+});
+
+test('upstream HTTP failures carry only http_<status> as diagnostic detail', async () => {
+  const cases: Array<[number, ModelFailureCode]> = [
+    [400, 'unavailable'],
+    [404, 'unavailable'],
+    [422, 'unavailable'],
+    [500, 'unavailable'],
+    [302, 'unavailable'],
+    [401, 'upstream_auth'],
+    [403, 'upstream_auth'],
+    [429, 'rate_limited']
+  ];
+  for (const [status, code] of cases) {
+    const body = { error: { message: 'upstream secret detail ' + TEST_KEY } };
+    const failure = await failsWith(recordingFetch(() => jsonResponse(body, status)), code);
+    assert.equal(failure.upstream, 'http_' + status);
+    assert.ok(!JSON.stringify(failure).includes('upstream secret detail'), 'the upstream body is never carried');
+  }
+});
+
+test('a thrown fetch carries only fetch_<ErrorName>, never the exception message', async () => {
+  const secretMessage = 'connect failed to host with ' + TEST_KEY;
+  const typeError = await failsWith((async () => { throw new TypeError(secretMessage); }) as typeof fetch, 'unavailable');
+  assert.equal(typeError.upstream, 'fetch_TypeError');
+  assert.ok(!JSON.stringify(typeError).includes('connect failed'));
+
+  const oddName = new Error(secretMessage);
+  oddName.name = 'Bad Name <script>';
+  const odd = await failsWith((async () => { throw oddName; }) as typeof fetch, 'unavailable');
+  assert.equal(odd.upstream, 'fetch_unknown');
+
+  const notAnError = await failsWith((async () => { throw secretMessage; }) as typeof fetch, 'unavailable');
+  assert.equal(notAnError.upstream, 'fetch_unknown');
+});
+
+test('a rejected reply carries its rejection code as reason, never the reply text', async () => {
+  const truncated = await failsWith(recordingFetch(() => jsonResponse(completion(GOOD, {}, { finish_reason: 'length' }))), 'truncated');
+  assert.equal(truncated.reason, 'truncated');
+  assert.equal(truncated.upstream, undefined);
+
+  const cases: Array<[string, string]> = [
+    ['I think the user wants a different answer here.', 'leak'],
+    ['That outage was not something I caused.', 'forbidden_topic'],
+    ['I was going to explain that the build', 'unfinished']
+  ];
+  for (const [text, reason] of cases) {
+    const failure = await failsWith(recordingFetch(() => jsonResponse(completion(text))), 'rejected_reply');
+    assert.equal(failure.reason, reason);
+    assert.ok(!JSON.stringify(failure).includes(text.slice(0, 20)), 'the reply text is never carried');
+  }
+});
+
+test('timeouts and reply-level failures carry no upstream detail', async () => {
+  const timedOut = await failsWith(hangingFetch(), 'timeout', { timeoutMs: 30 });
+  assert.equal(timedOut.upstream, undefined);
+  const malformed = await failsWith(recordingFetch(() => jsonResponse('not json at all', 200)), 'malformed');
+  assert.equal(malformed.upstream, undefined);
 });
 
 test('a reply that hit the token limit is refused even when the provider omits finish_reason', async () => {

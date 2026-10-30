@@ -62,17 +62,35 @@ export type ModelFailureCode =
   | 'rejected_reply'
   | 'prompt_too_large';
 
-/** A failure with a code and nothing else: no upstream body, no key, no headers. */
+/**
+ * A failure with a code and nothing else: no upstream body, no key, no headers.
+ * `upstream` is only ever http_<status> or fetch_<ErrorName>, and `reason` a
+ * rejection code (never reply text), both for the log only.
+ */
 export class ModelFailure extends Error {
   readonly code: ModelFailureCode;
   readonly retryAfterSeconds?: number;
+  readonly upstream?: string;
+  readonly reason?: string;
 
-  constructor(code: ModelFailureCode, retryAfterSeconds?: number) {
+  constructor(code: ModelFailureCode, retryAfterSeconds?: number, upstream?: string, reason?: string) {
     super('model_failure:' + code);
     this.name = 'ModelFailure';
     this.code = code;
     this.retryAfterSeconds = retryAfterSeconds;
+    this.upstream = upstream;
+    this.reason = reason;
   }
+}
+
+function httpTag(status: number): string {
+  return Number.isInteger(status) && status >= 0 && status <= 999 ? 'http_' + status : 'http_0';
+}
+
+/** The thrown value's type name only; its message is never read. */
+function fetchErrorTag(error: unknown): string {
+  const name = error instanceof Error ? error.name : undefined;
+  return typeof name === 'string' && /^[A-Za-z]{1,40}$/.test(name) ? 'fetch_' + name : 'fetch_unknown';
 }
 
 export interface NebiusConfig {
@@ -130,6 +148,8 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
   );
   const temperature = config.temperature === undefined ? DEFAULT_TEMPERATURE : config.temperature;
   const topP = config.topP === undefined ? DEFAULT_TOP_P : config.topP;
+  // Called as a plain function: Cloudflare Workers throw "Illegal invocation" when fetch runs with `this` set to config.
+  const doFetch = config.fetchImpl;
 
   return async (prompt) => {
     if (promptChars(prompt) > MAX_PROMPT_CHARS) {
@@ -146,11 +166,12 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
     try {
       let response: Response;
       try {
-        response = await config.fetchImpl(NEBIUS_CHAT_COMPLETIONS_URL, {
+        response = await doFetch(NEBIUS_CHAT_COMPLETIONS_URL, {
           method: 'POST',
           // A redirect would carry the request, and the key, somewhere this
-          // client never chose. Treat any redirect as a failure.
-          redirect: 'error',
+          // client never chose. 'manual' never follows it, and the 3xx (not ok)
+          // fails below. Cloudflare Workers reject redirect: 'error' outright.
+          redirect: 'manual',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
@@ -168,17 +189,17 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
           })
         });
       } catch (error) {
-        throw new ModelFailure(timedOut ? 'timeout' : 'unavailable');
+        throw timedOut ? new ModelFailure('timeout') : new ModelFailure('unavailable', undefined, fetchErrorTag(error));
       }
 
       if (response.status === 429) {
-        throw new ModelFailure('rate_limited', parseRetryAfter(response.headers.get('retry-after')));
+        throw new ModelFailure('rate_limited', parseRetryAfter(response.headers.get('retry-after')), httpTag(response.status));
       }
       if (response.status === 401 || response.status === 403) {
-        throw new ModelFailure('upstream_auth');
+        throw new ModelFailure('upstream_auth', undefined, httpTag(response.status));
       }
       if (!response.ok) {
-        throw new ModelFailure('unavailable');
+        throw new ModelFailure('unavailable', undefined, httpTag(response.status));
       }
 
       let text: string;
@@ -216,7 +237,7 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
         (choice && choice.finish_reason === 'length') ||
         (typeof usage?.completion_tokens === 'number' && usage.completion_tokens >= maxTokens)
       ) {
-        throw new ModelFailure('truncated');
+        throw new ModelFailure('truncated', undefined, undefined, 'truncated');
       }
 
       const content = message.content;
@@ -226,7 +247,7 @@ export function createNebiusModel(config: NebiusConfig): ModelClient {
 
       const parsed = parseModelText(content);
       if (!parsed.ok) {
-        throw new ModelFailure('rejected_reply');
+        throw new ModelFailure('rejected_reply', undefined, undefined, parsed.reason);
       }
 
       // Label the reply with the model the provider says answered, so a

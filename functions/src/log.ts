@@ -41,6 +41,37 @@ export interface TurnLogEntry {
   status: number;
   outcome: TurnOutcome;
   latencyMs: number;
+  /** Upstream failure detail, only ever http_<status> or fetch_<ErrorName>. Never sent to the browser. */
+  upstream?: string;
+  /** Why a model reply was rejected, from REJECTION_REASONS only. Never sent to the browser. */
+  reason?: string;
+}
+
+const UPSTREAM_PATTERN = /^(?:http_\d{1,3}|fetch_[A-Za-z]{1,40})$/;
+
+/** The detail if it has exactly the allowed shape, otherwise undefined. */
+export function sanitizeUpstream(value: unknown): string | undefined {
+  return typeof value === 'string' && UPSTREAM_PATTERN.test(value) ? value : undefined;
+}
+
+/** 'truncated' plus every replyValidation RejectionReason. */
+export const REJECTION_REASONS = [
+  'truncated',
+  'not_text',
+  'empty',
+  'unterminated_reasoning',
+  'leak',
+  'forbidden_topic',
+  'mock_marker',
+  'control_characters',
+  'link',
+  'unfinished',
+  'too_long',
+  'too_many_lines'
+] as const;
+
+export function sanitizeReason(value: unknown): string | undefined {
+  return typeof value === 'string' && (REJECTION_REASONS as readonly string[]).indexOf(value) !== -1 ? value : undefined;
 }
 
 export type TurnLogger = (entry: TurnLogEntry) => void;
